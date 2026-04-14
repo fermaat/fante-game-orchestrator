@@ -4,3 +4,15 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .pdm-python
+.pdm-build/
+pdm.lock
+dist/
+build/
+.venv/
+logs/*.log
+.env
+.env.local
+coverage.xml
+htmlcov/
+.coverage
+.claude/settings.local.json
