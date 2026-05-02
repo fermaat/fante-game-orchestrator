@@ -6,6 +6,8 @@ The orchestrator imports only from this package. Concrete adapters live in
 
 from fante.ports.io import InputPort, OutputPort
 from fante.ports.narrator import NarratorPort
+from fante.ports.rules import RulesPort
+from fante.ports.session import SessionStore
 from fante.ports.stores import ProfileStore
 
 __all__ = [
@@ -13,4 +15,6 @@ __all__ = [
     "NarratorPort",
     "OutputPort",
     "ProfileStore",
+    "RulesPort",
+    "SessionStore",
 ]

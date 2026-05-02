@@ -24,6 +24,7 @@ class FanteSettings(BridgeSettings):  # type: ignore[misc]
     narrator_prompt_path: Path = Path("prompts/narrator.yaml")
     fante_monitor: bool = False
     fante_monitor_path: Path = Path("logs/monitor.jsonl")
+    fante_session_path: Path = Path("~/.fante/session.json")
 
 
 __all__ = ["FanteSettings"]

@@ -66,6 +66,7 @@ class FakeNarrator:
         self._responses = list(responses)
         self.received: list[str] = []
         self.reset_count = 0
+        self._history: list[dict[str, str]] = []
 
     def respond(self, user_input: str) -> str:
         self.received.append(user_input)
@@ -73,6 +74,13 @@ class FakeNarrator:
 
     def reset(self) -> None:
         self.reset_count += 1
+        self._history = []
+
+    def get_history(self) -> list[dict[str, str]]:
+        return list(self._history)
+
+    def seed_history(self, messages: list[dict[str, str]]) -> None:
+        self._history = list(messages)
 
 
 class FakeInput:
@@ -101,6 +109,24 @@ class FakeProfileStore:
 
     def save(self, profile: PlayerProfile) -> None:
         self.saved.append(profile)
+
+
+class FakeSessionStore:
+    def __init__(self) -> None:
+        self._session: object = None
+        self.save_count = 0
+        self.clear_count = 0
+
+    def save(self, session: object) -> None:
+        self._session = session
+        self.save_count += 1
+
+    def load(self) -> object:
+        return self._session
+
+    def clear(self) -> None:
+        self._session = None
+        self.clear_count += 1
 
 
 # ---------- Builders -------------------------------------------------------

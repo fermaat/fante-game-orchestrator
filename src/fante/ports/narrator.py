@@ -18,3 +18,11 @@ class NarratorPort(Protocol):
     def reset(self) -> None:
         """Clear conversation memory. Used on game restart or scene change."""
         ...
+
+    def get_history(self) -> list[dict[str, str]]:
+        """Return current conversation as a list of role/content dicts."""
+        ...
+
+    def seed_history(self, messages: list[dict[str, str]]) -> None:
+        """Replace conversation history from a list of role/content dicts."""
+        ...
