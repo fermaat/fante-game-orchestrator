@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "name": "Fante",
+  "background": "Joven explorador con curiosidad infinita y un cariño especial por los elefantes.",
+  "preferences": ["elefantes", "aventuras", "trepar a sitios", "los animales del bosque"],
+  "stats": {
+    "fuerza": 8,
+    "agilidad": 12,
+    "astucia": 10,
+    "valor": 14
+  },
+  "language": "es"
+}

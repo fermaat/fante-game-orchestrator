@@ -15,4 +15,5 @@ logs/*.log
 coverage.xml
 htmlcov/
 .coverage
-.claude/settings.local.json
+.claude/
+docs/

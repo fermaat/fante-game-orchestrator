@@ -1,11 +1,16 @@
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
 [project]
 name = "fante-game-orchestrator"
 version = "0.1.0"
-description = "Default template for PDM package"
+description = "Game loop orchestrator for a voice/text RPG"
 readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
-    "httpx>=0.25",
+    "core-utils @ git+https://github.com/fermaat/core-utils.git",
+    "core-llm-bridge @ git+https://github.com/fermaat/core-llm-bridge.git",
     "pyyaml>=6.0.3",
 ]
 authors = [
@@ -19,10 +24,27 @@ dev = [
     "ruff>=0.1",
     "mypy>=1.0",
     "isort>=5.12",
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "types-PyYAML>=6.0",
 ]
 
 [tool.pdm]
-distribution = false
+distribution = true
+
+[tool.pdm.build]
+includes = ["src/fante"]
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "black>=23.0",
+    "ruff>=0.1",
+    "mypy>=1.0",
+    "isort>=5.12",
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "types-PyYAML>=6.0",
+]
 
 [tool.mypy]
 python_version = "3.12"
@@ -38,6 +60,21 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
+
+# Tests intentionally use untyped fixtures (Callable[..., tuple[...]] returned
+# by builder fixtures) — exercising end-to-end behaviour matters more than
+# tight signatures here.
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+
+# External libraries without py.typed marker / type stubs.
+[[tool.mypy.overrides]]
+module = [
+    "core_llm_bridge.*",
+    "core_utils.*",
+]
+ignore_missing_imports = true
 
 [tool.black]
 line-length = 100
