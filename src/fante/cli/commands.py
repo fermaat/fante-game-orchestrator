@@ -1,0 +1,95 @@
+"""Slash command handler for the game REPL.
+
+`CommandHandler` is callable: `handler(line) -> str | None`.
+- Returns a string  → emit it, skip the narrator for this turn.
+- Returns None      → not a slash command, fall through to the narrator.
+- Raises QuitRequested → break the game loop.
+
+Commands implemented:
+  /status   — turn count, player name, session age
+  /roll <spec> — dice roll (e.g. /roll 2d6+3)
+  /save     — force-persist the current session
+  /reset    — clear history and session
+  /quit     — exit the game
+"""
+
+from collections.abc import Callable
+from datetime import datetime, timezone
+
+from fante.manager import QuitRequested
+from fante.ports import RulesPort
+
+
+class CommandHandler:
+    """Processes slash commands on behalf of the game loop.
+
+    Accepts callables instead of a GameManager reference to avoid a
+    circular dependency between cli and manager.
+    """
+
+    def __init__(
+        self,
+        profile_name: str,
+        get_turn_index: Callable[[], int],
+        get_session_started_at: Callable[[], datetime],
+        reset_fn: Callable[[], None],
+        save_fn: Callable[[], None],
+        rules_port: RulesPort | None = None,
+    ) -> None:
+        self._profile_name = profile_name
+        self._get_turn_index = get_turn_index
+        self._get_session_started_at = get_session_started_at
+        self._reset_fn = reset_fn
+        self._save_fn = save_fn
+        self._rules = rules_port
+
+    def __call__(self, line: str) -> str | None:
+        if not line.startswith("/"):
+            return None
+        parts = line.strip().split(maxsplit=1)
+        cmd = parts[0].lower()
+        arg = parts[1].strip() if len(parts) > 1 else ""
+
+        if cmd == "/quit":
+            raise QuitRequested
+        if cmd == "/status":
+            return self._status()
+        if cmd == "/reset":
+            return self._reset()
+        if cmd == "/save":
+            return self._save()
+        if cmd == "/roll":
+            return self._roll(arg)
+        return None  # unknown /command — let narrator handle it
+
+    # ------------------------------------------------------------------
+
+    def _status(self) -> str:
+        age = datetime.now(timezone.utc) - self._get_session_started_at()
+        total = int(age.total_seconds())
+        h, rem = divmod(total, 3600)
+        m, s = divmod(rem, 60)
+        return (
+            f"Turno: {self._get_turn_index()} | "
+            f"Aventurero: {self._profile_name} | "
+            f"Sesión: {h:02d}:{m:02d}:{s:02d}"
+        )
+
+    def _reset(self) -> str:
+        self._reset_fn()
+        return "Aventura reiniciada. ¡Todo olvidado!"
+
+    def _save(self) -> str:
+        self._save_fn()
+        return "Partida guardada."
+
+    def _roll(self, arg: str) -> str:
+        if not arg:
+            return "Uso: /roll <spec>  (ej: /roll 2d6+3)"
+        if self._rules is None:
+            return "(El sistema de dados no está disponible.)"
+        try:
+            result = self._rules.roll(arg)
+            return f"🎲 {result}"
+        except ValueError as exc:
+            return f"Dados inválidos: {exc}"

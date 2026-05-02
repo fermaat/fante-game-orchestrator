@@ -11,9 +11,11 @@ from fante.adapters import (
     BridgeNarrator,
     JSONProfileStore,
     JSONSessionStore,
+    LocalDice,
     StdinInput,
     StdoutOutput,
 )
+from fante.cli.commands import CommandHandler
 from fante.config import FanteSettings
 from fante.events.bus import EventBus
 from fante.events.dad_monitor import install_dad_monitor
@@ -55,11 +57,23 @@ def build_game(settings: FanteSettings | None = None, reset: bool = False) -> Ga
     if settings.fante_monitor:
         install_dad_monitor(bus, settings.fante_monitor_path)
 
-    return GameManager(
+    dice = LocalDice()
+
+    game = GameManager(
         narrator=narrator,
         input_port=StdinInput(),
         output_port=StdoutOutput(),
         profile_store=profile_store,
         bus=bus,
         session_store=session_store,
+        command_handler=CommandHandler(
+            profile_name=profile.name,
+            get_turn_index=lambda: game.turn_index,
+            get_session_started_at=lambda: game.session_started_at,
+            reset_fn=lambda: game.reset(),
+            save_fn=lambda: game.save_session(),
+            rules_port=dice,
+        ),
     )
+
+    return game

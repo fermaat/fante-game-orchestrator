@@ -20,34 +20,50 @@ src/fante/
 ├── config.py               # FanteSettings (subclass of bridge Settings)
 ├── manager.py              # GameManager — central orchestrator (knows only ports + bus)
 ├── ports/                  # Protocol definitions (capabilities)
-│   ├── narrator.py         # NarratorPort
+│   ├── narrator.py         # NarratorPort (respond, reset, get_history, seed_history)
 │   ├── io.py               # InputPort, OutputPort
+│   ├── rules.py            # RulesPort
+│   ├── session.py          # SessionStore
 │   └── stores.py           # ProfileStore
 ├── domain/                 # Game domain types
-│   ├── profile.py          # PlayerProfile (versioned), Language
-│   └── events.py           # TurnStarted, NarrationGenerated, TurnFinished
+│   ├── profile.py          # PlayerProfile (versioned), Language, seed_prompt
+│   ├── events.py           # TurnStarted, NarrationGenerated, TurnFinished
+│   ├── rules.py            # RollResult
+│   └── session.py          # Session (turn_index, history, timestamps)
+├── cli/                    # CLI utilities
+│   └── commands.py         # CommandHandler — /status /roll /save /reset /quit
 ├── events/                 # Internal pub/sub
 │   ├── bus.py              # EventBus (sync, MRO-walking)
 │   └── subscribers.py      # install_logging_subscriber
 └── adapters/               # Concrete implementations of ports
     ├── bridge_narrator.py  # NarratorPort via core-llm-bridge BridgeEngine
+    ├── local_dice.py       # RulesPort — SystemRandom, parses XdY±Z
+    ├── json_session_store.py  # SessionStore — ~/.fante/session.json
     ├── stdio_io.py         # StdinInput, StdoutOutput
     └── json_profile_store.py
 
 data/
 └── player_profile.json     # Fante's character sheet
 
+prompts/
+└── narrator.yaml           # Externalised narrator prompt (fallback to inline)
+
 docs/
 ├── project_briefing.md
 ├── IMPLEMENTATION_PLAN.md
+├── USER_TESTS.md
 └── core_llm_bridge_specs.md
 
 tests/
-├── conftest.py             # MockProvider, FakeNarrator/Input/Output, make_game
+├── conftest.py             # MockProvider, FakeNarrator/Input/Output/Session, make_game
 ├── test_event_bus.py       # unit
 ├── test_profile.py         # unit
-├── test_manager.py         # functional (real GameManager, fake adapters)
+├── test_manager.py         # functional
 ├── test_narrator.py        # functional (real BridgeNarrator, MockProvider)
+├── test_dice.py            # unit
+├── test_session_store.py   # unit + functional
+├── test_commands.py        # functional
+├── test_dad_monitor.py     # unit
 └── test_integration.py     # marker-gated, hits real Ollama
 ```
 
@@ -59,6 +75,8 @@ tests/
 | `InputPort` | `StdinInput` | `WhisperInput` (speech-io-hub) |
 | `OutputPort` | `StdoutOutput` | `TTSOutput`, `GodotOutput` |
 | `ProfileStore` | `JSONProfileStore` | `SqliteProfileStore` |
+| `RulesPort` | `LocalDice` | `MCPRulesAdapter` (Phase 2) |
+| `SessionStore` | `JSONSessionStore` (`~/.fante/session.json`) | `SqliteSessionStore` |
 
 Planned additions (when their first consumer arrives):
 - `RulesPort` — Phase 1.5 (`LocalDice`), Phase 2 (`MCPRules` via mcp-game-rules repo)
@@ -126,7 +144,7 @@ pdm run pytest -m integration -v   # opt-in, requires Ollama running
 ## Phase status
 
 - **Phase 1.0 ✓** — Walking skeleton: ports/adapters, EventBus, runnable terminal RPG, full test suite, integration test green against Ollama.
-- **Phase 1.5 (next)** — Polish: dice (`RulesPort` + `LocalDice`), session persistence (`SessionStore`), externalised narrator prompt (YAML), Dad's Monitor as a subscriber, profiler hook, sharper system prompt or model upgrade.
+- **Phase 1.5 ✓** — Polish: externalised prompt YAML, `seed_prompt` opening scene, profiler hook, Dad's Monitor, `RulesPort`+`LocalDice`, `SessionStore`+`JSONSessionStore`, slash commands (`/status /roll /save /reset /quit`), `--reset` CLI flag. 55 tests pass.
 - **Phase 2** — `mcp-game-rules` repo (created manually) → `MCPRulesAdapter`. Possibly `KnowledgePort` + `CopperKnowledgeAdapter` for richer lore / educational modules.
 - **Phase 3** — `speech-io-hub` repo → Whisper input + TTS output. Async at the orchestrator seam.
 - **Phase 4** — `world-engine-godot` repo → WebSocket `WorldPort`.

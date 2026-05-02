@@ -4,6 +4,7 @@ Depends only on port protocols and the EventBus. Knows nothing about
 specific adapters. Adapters are wired in `fante.compose`.
 """
 
+from collections.abc import Callable
 from datetime import datetime, timezone
 
 from core_utils import logger
@@ -12,6 +13,10 @@ from fante.domain.events import NarrationGenerated, TurnFinished, TurnStarted
 from fante.domain.session import Session
 from fante.events.bus import EventBus
 from fante.ports import InputPort, NarratorPort, OutputPort, ProfileStore, SessionStore
+
+
+class QuitRequested(Exception):
+    """Raised by a command handler to signal the game loop should exit."""
 
 
 class GameManager:
@@ -23,6 +28,7 @@ class GameManager:
         profile_store: ProfileStore,
         bus: EventBus,
         session_store: SessionStore | None = None,
+        command_handler: Callable[[str], str | None] | None = None,
     ) -> None:
         self._narrator = narrator
         self._input = input_port
@@ -30,8 +36,25 @@ class GameManager:
         self._profile_store = profile_store
         self._bus = bus
         self._session_store = session_store
+        self._command_handler = command_handler
         self._turn_index = 0
         self._session_started_at: datetime = datetime.now(timezone.utc)
+
+    # ------------------------------------------------------------------
+    # Public read-only state (used by CommandHandler for /status)
+    # ------------------------------------------------------------------
+
+    @property
+    def turn_index(self) -> int:
+        return self._turn_index
+
+    @property
+    def session_started_at(self) -> datetime:
+        return self._session_started_at
+
+    # ------------------------------------------------------------------
+    # Core operations
+    # ------------------------------------------------------------------
 
     def process_turn(self, user_input: str) -> str:
         """Run one turn through narrator + event bus. Returns the narration."""
@@ -71,6 +94,10 @@ class GameManager:
             last_at=datetime.now(timezone.utc),
         )
 
+    # ------------------------------------------------------------------
+    # REPL
+    # ------------------------------------------------------------------
+
     def run(self) -> None:
         """Blocking REPL: read → process → emit until input is exhausted."""
         profile = self._profile_store.load()
@@ -88,6 +115,14 @@ class GameManager:
                 break
             if not user_input:
                 continue
+            if self._command_handler is not None:
+                try:
+                    result = self._command_handler(user_input)
+                except QuitRequested:
+                    break
+                if result is not None:
+                    self._output.emit(result)
+                    continue
             try:
                 narration = self.process_turn(user_input)
             except Exception:
