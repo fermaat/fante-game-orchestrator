@@ -21,6 +21,9 @@ class FanteSettings(BridgeSettings):  # type: ignore[misc]
     ollama_default_model: str = "llama3.2:latest"
     player_profile_path: Path = Path("data/player_profile.json")
     max_history_length: int = 30
+    narrator_prompt_path: Path = Path("prompts/narrator.yaml")
+    fante_monitor: bool = False
+    fante_monitor_path: Path = Path("logs/monitor.jsonl")
 
 
 __all__ = ["FanteSettings"]

@@ -15,6 +15,7 @@ from fante.adapters import (
 )
 from fante.config import FanteSettings
 from fante.events.bus import EventBus
+from fante.events.dad_monitor import install_dad_monitor
 from fante.events.subscribers import install_logging_subscriber
 from fante.manager import GameManager
 
@@ -36,10 +37,13 @@ def build_game(settings: FanteSettings | None = None) -> GameManager:
         provider=provider,
         profile=profile,
         max_history_length=settings.max_history_length,
+        prompt_path=settings.narrator_prompt_path,
     )
 
     bus = EventBus()
     install_logging_subscriber(bus)
+    if settings.fante_monitor:
+        install_dad_monitor(bus, settings.fante_monitor_path)
 
     return GameManager(
         narrator=narrator,

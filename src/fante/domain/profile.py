@@ -20,3 +20,4 @@ class PlayerProfile(BaseModel):
     preferences: list[str] = Field(default_factory=list)
     stats: dict[str, int] = Field(default_factory=dict)
     language: Language = "es"
+    seed_prompt: str | None = None

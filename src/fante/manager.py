@@ -47,6 +47,11 @@ class GameManager:
         self._output.emit(
             f"=== Aventura para {profile.name} ===\n" "(Escribe 'salir' para terminar)\n"
         )
+        if profile.seed_prompt:
+            try:
+                self._output.emit(self.process_turn(profile.seed_prompt))
+            except Exception:
+                logger.exception("opening scene failed")
         while True:
             user_input = self._input.read()
             if user_input is None:
