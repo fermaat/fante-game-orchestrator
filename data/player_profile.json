@@ -9,5 +9,7 @@
     "astucia": 10,
     "valor": 14
   },
-  "language": "es"
+  "language": "es",
+  "seed_prompt": null
+
 }
