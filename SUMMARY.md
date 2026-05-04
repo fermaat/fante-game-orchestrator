@@ -35,25 +35,31 @@ src/fante/
 ├── events/                 # Internal pub/sub
 │   ├── bus.py              # EventBus (sync, MRO-walking)
 │   └── subscribers.py      # install_logging_subscriber
+├── turn/                   # Turn-level processing (Phase 2.B)
+│   └── classifier.py       # ActionClassifier — LLM call returning ActionIntent | None
 └── adapters/               # Concrete implementations of ports
-    ├── bridge_narrator.py  # NarratorPort via core-llm-bridge BridgeEngine
-    ├── local_dice.py       # RulesPort — SystemRandom, parses XdY±Z (offline/test)
+    ├── bridge_narrator.py  # NarratorPort — weaves check_result into narration
+    ├── llm_evaluator.py    # PerformanceEvaluatorPort — LLM-as-judge for skill mode
+    ├── noop_knowledge.py   # KnowledgePort — no-op until Phase 2.C
+    ├── local_dice.py       # RulesPort — SystemRandom (offline/test fallback)
     ├── mcp_rules.py        # RulesPort — MCPRulesAdapter (Phase 2.A)
     ├── json_session_store.py  # SessionStore — ~/.fante/session.json
     ├── stdio_io.py         # StdinInput, StdoutOutput
     └── json_profile_store.py  # v1→v2 migration aware
 
 domain/
-    ├── actor.py            # Actor, profile_to_actor (mirrors mcp-game-rules wire format)
-    ├── turn.py             # ActionIntent (for Phase 2.B classifier)
-    ├── rules.py            # RollResult + CheckResult, AppliedModifier, PlotDieFace
-    └── ...
+    ├── actor.py            # Actor, profile_to_actor
+    ├── turn.py             # ActionIntent
+    ├── rules.py            # RollResult, CheckResult, AppliedModifier, PlotDieFace
+    └── events.py           # + ActionClassified, CheckResolved
 
 data/
 └── player_profile.json     # Fante's character sheet (schema_version 2)
 
 prompts/
-└── narrator.yaml           # Externalised narrator prompt (fallback to inline)
+├── narrator.yaml           # Externalised narrator prompt
+├── classifier.yaml         # Classifier system prompt
+└── evaluator.yaml          # Evaluator system prompt
 
 docs/
 ├── project_briefing.md
@@ -66,7 +72,10 @@ tests/
 ├── test_event_bus.py       # unit
 ├── test_profile.py         # unit (incl. v1→v2 migration)
 ├── test_actor_translation.py  # unit
-├── test_mcp_rules.py       # unit (FakeRulesPort) + integration (live server)
+├── test_mcp_rules.py       # unit + integration (live server)
+├── test_evaluator.py       # functional (MockProvider)
+├── test_classifier.py      # functional (MockProvider)
+├── test_turn_flow.py       # functional (full action pipeline)
 ├── test_manager.py         # functional
 ├── test_narrator.py        # functional (real BridgeNarrator, MockProvider)
 ├── test_dice.py            # unit
@@ -155,7 +164,8 @@ pdm run pytest -m integration -v   # opt-in, requires Ollama running
 - **Phase 1.0 ✓** — Walking skeleton: ports/adapters, EventBus, runnable terminal RPG, full test suite, integration test green against Ollama.
 - **Phase 1.5 ✓** — Polish: externalised prompt YAML, `seed_prompt` opening scene, profiler hook, Dad's Monitor, `RulesPort`+`LocalDice`, `SessionStore`+`JSONSessionStore`, slash commands (`/status /roll /save /reset /quit`), `--reset` CLI flag. 55 tests pass.
 - **Phase 2.A ✓** — `PlayerProfile` v2 (Cosmere attributes/skills/tags), `Actor` + `profile_to_actor`, `CheckResult`/`AppliedModifier`/`PlotDieFace` domain types, `MCPRulesAdapter` (persistent subprocess, sync facade), `/check` slash command, `FANTE_RULES_BACKEND` + `MCP_RULES_COMMAND` env vars, `mcp>=1.27` dep. 67 tests pass.
-- **Phase 2.B** — `ActionClassifier` (pre-narrator LLM call) + `PerformanceEvaluator` + skill/dice mode toggle.
+- **Phase 2.B ✓** — `ActionClassifier` + `LLMPerformanceEvaluator` + turn lifecycle (classify→eval→check→narrate), modo dice/skill (`/dice` `/skill`), `KnowledgePort` + `NoopKnowledgeAdapter` stub, `ActionClassified`/`CheckResolved` events. 82 tests pass.
+- **Phase 2.C** — `CopperKnowledgeAdapter`: real knowledge backend. `NarratorPort.respond` extended with `knowledge` param.
 - **Phase 3** — `speech-io-hub` repo → Whisper input + TTS output. Async at the orchestrator seam.
 - **Phase 4** — `world-engine-godot` repo → WebSocket `WorldPort`.
 

@@ -31,5 +31,11 @@ class FanteSettings(BridgeSettings):  # type: ignore[misc]
     fante_rules_backend: Literal["mcp", "local"] = "mcp"
     mcp_rules_command: list[str] = [sys.executable, "-m", "mcp_game_rules"]
 
+    fante_classifier_enabled: bool = True
+    fante_classifier_model: str = ""
+    fante_evaluator_model: str = ""
+    fante_default_mode: Literal["dice", "skill"] = "skill"
+    fante_evaluator_fallback_score: int = 12
+
 
 __all__ = ["FanteSettings"]

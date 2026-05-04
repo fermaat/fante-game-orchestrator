@@ -6,13 +6,27 @@ specific adapters. Adapters are wired in `fante.compose`.
 
 from collections.abc import Callable
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Literal
 
 from core_utils import logger
 
-from fante.domain.events import NarrationGenerated, TurnFinished, TurnStarted
+from fante.domain.actor import profile_to_actor
+from fante.domain.events import (
+    ActionClassified,
+    CheckResolved,
+    NarrationGenerated,
+    TurnFinished,
+    TurnStarted,
+)
 from fante.domain.session import Session
 from fante.events.bus import EventBus
-from fante.ports import InputPort, NarratorPort, OutputPort, ProfileStore, SessionStore
+from fante.ports import InputPort, NarratorPort, OutputPort, ProfileStore, RulesPort, SessionStore
+
+if TYPE_CHECKING:
+    from fante.ports.evaluator import PerformanceEvaluatorPort
+    from fante.turn.classifier import ActionClassifier
+
+Mode = Literal["dice", "skill"]
 
 
 class QuitRequested(Exception):
@@ -29,6 +43,10 @@ class GameManager:
         bus: EventBus,
         session_store: SessionStore | None = None,
         command_handler: Callable[[str], str | None] | None = None,
+        rules_port: RulesPort | None = None,
+        classifier: "ActionClassifier | None" = None,
+        evaluator: "PerformanceEvaluatorPort | None" = None,
+        default_mode: Mode = "skill",
     ) -> None:
         self._narrator = narrator
         self._input = input_port
@@ -37,11 +55,15 @@ class GameManager:
         self._bus = bus
         self._session_store = session_store
         self._command_handler = command_handler
+        self._rules = rules_port
+        self._classifier = classifier
+        self._evaluator = evaluator
+        self._mode: Mode = default_mode
         self._turn_index = 0
         self._session_started_at: datetime = datetime.now(timezone.utc)
 
     # ------------------------------------------------------------------
-    # Public read-only state (used by CommandHandler for /status)
+    # Public read-only state
     # ------------------------------------------------------------------
 
     @property
@@ -52,16 +74,43 @@ class GameManager:
     def session_started_at(self) -> datetime:
         return self._session_started_at
 
+    @property
+    def mode(self) -> Mode:
+        return self._mode
+
+    def set_mode(self, mode: Mode) -> None:
+        self._mode = mode
+
     # ------------------------------------------------------------------
     # Core operations
     # ------------------------------------------------------------------
 
     def process_turn(self, user_input: str) -> str:
-        """Run one turn through narrator + event bus. Returns the narration."""
+        """Run one turn through the full pipeline. Returns the narration."""
         self._turn_index += 1
         idx = self._turn_index
         self._bus.publish(TurnStarted(turn_index=idx, user_input=user_input))
-        narration = self._narrator.respond(user_input)
+
+        check_result = None
+
+        if self._classifier is not None and self._rules is not None:
+            profile = self._profile_store.load()
+            intent = self._classifier.classify(user_input, profile.name)
+
+            if intent is not None:
+                self._bus.publish(ActionClassified(turn_index=idx, intent=intent))
+                player_score: int | None = None
+                if self._mode == "skill" and self._evaluator is not None:
+                    player_score = self._evaluator.score(
+                        user_input, profile, intent.context or None
+                    )
+                actor = profile_to_actor(profile)
+                check_result = self._rules.check(
+                    intent.rule_id, actor, intent.context or None, player_score
+                )
+                self._bus.publish(CheckResolved(turn_index=idx, result=check_result))
+
+        narration = self._narrator.respond(user_input, check_result)
         self._bus.publish(NarrationGenerated(turn_index=idx, narration=narration))
         self._bus.publish(TurnFinished(turn_index=idx))
         self._autosave()

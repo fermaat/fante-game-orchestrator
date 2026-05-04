@@ -13,6 +13,7 @@ from core_llm_bridge.utils.prompt_manager import PromptManager
 from core_utils.profiler import profiler
 
 from fante.domain.profile import Language, PlayerProfile
+from fante.domain.rules import CheckResult
 
 _DEFAULT_PROMPT_PATH = Path("prompts/narrator.yaml")
 
@@ -35,6 +36,8 @@ Reglas del narrador:
 - Cuando el jugador intente algo arriesgado, describe el intento y el resultado de forma clara.
 - Termina siempre invitando a que el jugador decida qué hace a continuación.
 - Para el modo mixto: introduce palabras o frases cortas en inglés entre paréntesis con su traducción.
+- Cuando recibas un [Resultado de acción], úsalo para enriquecer la narración de forma natural.
+  No lo cites textualmente: conviértelo en parte de la historia.
 """
 
 _LANGUAGE_INSTRUCTION: dict[Language, str] = {
@@ -72,6 +75,17 @@ def _build_system_prompt(
     )
 
 
+def _build_check_context(result: CheckResult) -> str:
+    outcome = "éxito" if result.success else "fallo"
+    seed = f" | {result.narration_seed}" if result.narration_seed else ""
+    plot = (
+        " | dados de trama: " + ", ".join(d.value for d in result.plot_dice)
+        if result.plot_dice
+        else ""
+    )
+    return f"[Resultado de acción: {result.rule_id} → {outcome}{seed}{plot}]"
+
+
 class BridgeNarrator:
     """NarratorPort implementation backed by a `BridgeEngine`."""
 
@@ -89,10 +103,14 @@ class BridgeNarrator:
             max_history_length=max_history_length,
         )
 
-    def respond(self, user_input: str) -> str:
+    def respond(self, user_input: str, check_result: CheckResult | None = None) -> str:
+        if check_result is not None:
+            turn_input = f"{_build_check_context(check_result)}\n{user_input}"
+        else:
+            turn_input = user_input
         with profiler.step("llm_call") as s:
             s.tag(model=self._engine.provider.model)
-            response = self._engine.chat(user_input)
+            response = self._engine.chat(turn_input)
         return cast(str, response.text)
 
     def reset(self) -> None:
