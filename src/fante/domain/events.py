@@ -1,11 +1,15 @@
 """Domain events emitted by the orchestrator.
 
 Events are immutable. Subscribers attach to the EventBus and react without
-modifying the orchestrator. Phase 1.5 will add ProfilerSubscriber,
-MonitorSubscriber, etc., on the same surface.
+modifying the orchestrator.
 """
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fante.domain.rules import CheckResult
+    from fante.domain.turn import ActionIntent
 
 
 @dataclass(frozen=True)
@@ -28,3 +32,13 @@ class NarrationGenerated(DomainEvent):
 @dataclass(frozen=True)
 class TurnFinished(DomainEvent):
     pass
+
+
+@dataclass(frozen=True)
+class ActionClassified(DomainEvent):
+    intent: "ActionIntent"
+
+
+@dataclass(frozen=True)
+class CheckResolved(DomainEvent):
+    result: "CheckResult"

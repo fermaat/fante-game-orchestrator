@@ -6,9 +6,11 @@
 - Raises QuitRequested → break the game loop.
 
 Commands implemented:
-  /status            — turn count, player name, session age
+  /status            — turn count, player name, session age, current mode
   /roll <spec>       — dice roll (e.g. /roll 2d6+3)
   /check <rule_id> [json_context] — action check via rules backend
+  /dice              — switch to dice mode for this session
+  /skill             — switch to skill mode for this session
   /save              — force-persist the current session
   /reset             — clear history and session
   /quit              — exit the game
@@ -17,12 +19,14 @@ Commands implemented:
 import json
 from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 from fante.domain.actor import profile_to_actor
 from fante.domain.profile import PlayerProfile
 from fante.manager import QuitRequested
 from fante.ports import RulesPort
+
+Mode = Literal["dice", "skill"]
 
 
 class CommandHandler:
@@ -41,6 +45,8 @@ class CommandHandler:
         save_fn: Callable[[], None],
         rules_port: RulesPort | None = None,
         get_profile: Callable[[], PlayerProfile] | None = None,
+        get_mode: Callable[[], Mode] | None = None,
+        set_mode: Callable[[Mode], None] | None = None,
     ) -> None:
         self._profile_name = profile_name
         self._get_turn_index = get_turn_index
@@ -49,6 +55,8 @@ class CommandHandler:
         self._save_fn = save_fn
         self._rules = rules_port
         self._get_profile = get_profile
+        self._get_mode = get_mode
+        self._set_mode = set_mode
 
     def __call__(self, line: str) -> str | None:
         if not line.startswith("/"):
@@ -69,6 +77,10 @@ class CommandHandler:
             return self._roll(arg)
         if cmd == "/check":
             return self._check(arg)
+        if cmd == "/dice":
+            return self._set_mode_cmd("dice")
+        if cmd == "/skill":
+            return self._set_mode_cmd("skill")
         return None  # unknown /command — let narrator handle it
 
     # ------------------------------------------------------------------
@@ -78,10 +90,12 @@ class CommandHandler:
         total = int(age.total_seconds())
         h, rem = divmod(total, 3600)
         m, s = divmod(rem, 60)
+        mode_str = f" | Modo: {self._get_mode()}" if self._get_mode is not None else ""
         return (
             f"Turno: {self._get_turn_index()} | "
             f"Aventurero: {self._profile_name} | "
             f"Sesión: {h:02d}:{m:02d}:{s:02d}"
+            f"{mode_str}"
         )
 
     def _reset(self) -> str:
@@ -138,3 +152,10 @@ class CommandHandler:
             f"  Dados de trama: {plot}\n"
             f"  Semilla narrativa: {seed}"
         )
+
+    def _set_mode_cmd(self, mode: Mode) -> str:
+        if self._set_mode is None:
+            return "(El cambio de modo no está disponible.)"
+        self._set_mode(mode)
+        labels = {"dice": "dados (d20)", "skill": "habilidad (evaluador)"}
+        return f"Modo cambiado a: {labels[mode]}."

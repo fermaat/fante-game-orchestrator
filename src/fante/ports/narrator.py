@@ -1,6 +1,9 @@
 """NarratorPort — capability of producing narrative responses to player input."""
 
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from fante.domain.rules import CheckResult
 
 
 class NarratorPort(Protocol):
@@ -11,8 +14,8 @@ class NarratorPort(Protocol):
     bridge adapter delegates to `BridgeEngine`'s `ConversationBuffer`).
     """
 
-    def respond(self, user_input: str) -> str:
-        """Generate a narration in reply to a single player utterance."""
+    def respond(self, user_input: str, check_result: "CheckResult | None" = None) -> str:
+        """Generate a narration. If check_result is given, weave its narration_seed."""
         ...
 
     def reset(self) -> None:
