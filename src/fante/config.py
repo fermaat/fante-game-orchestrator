@@ -5,7 +5,9 @@ env vars (`OLLAMA_*`, `ANTHROPIC_*`, `OPENAI_*`, `LOG_*`) are available
 without re-declaration.
 """
 
+import sys
 from pathlib import Path
+from typing import Literal
 
 from core_llm_bridge.config import Settings as BridgeSettings
 
@@ -25,6 +27,9 @@ class FanteSettings(BridgeSettings):  # type: ignore[misc]
     fante_monitor: bool = False
     fante_monitor_path: Path = Path("logs/monitor.jsonl")
     fante_session_path: Path = Path("~/.fante/session.json")
+
+    fante_rules_backend: Literal["mcp", "local"] = "mcp"
+    mcp_rules_command: list[str] = [sys.executable, "-m", "mcp_game_rules"]
 
 
 __all__ = ["FanteSettings"]

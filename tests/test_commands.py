@@ -6,6 +6,7 @@ import pytest
 
 from fante.adapters.local_dice import LocalDice
 from fante.cli.commands import CommandHandler
+from fante.domain.profile import Attributes, PlayerProfile
 from fante.manager import QuitRequested
 
 
@@ -15,6 +16,7 @@ def _make_handler(
     reset_called: list[bool] | None = None,
     save_called: list[bool] | None = None,
     rules_port: object = None,
+    get_profile: object = None,
 ) -> CommandHandler:
     _reset = reset_called if reset_called is not None else []
     _save = save_called if save_called is not None else []
@@ -26,6 +28,17 @@ def _make_handler(
         reset_fn=lambda: _reset.append(True),
         save_fn=lambda: _save.append(True),
         rules_port=rules_port,  # type: ignore[arg-type]
+        get_profile=get_profile,  # type: ignore[arg-type]
+    )
+
+
+def _sample_profile() -> PlayerProfile:
+    return PlayerProfile(
+        name="Fante",
+        background="Explorador",
+        attributes=Attributes(
+            strength=3, speed=4, intellect=3, willpower=5, awareness=4, presence=6
+        ),
     )
 
 
@@ -102,6 +115,41 @@ class TestCommandHandler:
     def test_unknown_command_returns_none(self) -> None:
         h = _make_handler()
         assert h("/foobar") is None
+
+    def test_check_no_rules_returns_unavailable(self) -> None:
+        h = _make_handler(rules_port=None)
+        result = h("/check climb")
+        assert result is not None
+        assert "disponible" in result
+
+    def test_check_local_dice_raises_not_implemented(self) -> None:
+        h = _make_handler(rules_port=LocalDice(), get_profile=_sample_profile)
+        result = h("/check climb")
+        assert result is not None
+        assert "mcp" in result.lower()
+
+    def test_check_missing_arg_shows_usage(self) -> None:
+        h = _make_handler()
+        result = h("/check")
+        assert result is not None
+        assert "/check" in result
+
+    def test_check_invalid_json_context(self) -> None:
+        from tests.conftest import FakeRulesPort
+
+        h = _make_handler(rules_port=FakeRulesPort(), get_profile=_sample_profile)
+        result = h("/check climb {bad json}")
+        assert result is not None
+        assert "json" in result.lower()
+
+    def test_check_success_renders_result(self) -> None:
+        from tests.conftest import FakeRulesPort
+
+        h = _make_handler(rules_port=FakeRulesPort(), get_profile=_sample_profile)
+        result = h("/check climb")
+        assert result is not None
+        assert "climb" in result
+        assert "Éxito" in result or "Fallo" in result
 
     def test_game_manager_dispatches_commands(self, make_game: object) -> None:
         """Integration: GameManager routes /reset through the command handler."""

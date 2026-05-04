@@ -1,15 +1,18 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "name": "Fante",
   "background": "Joven explorador con curiosidad infinita y un cariño especial por los elefantes.",
   "preferences": ["elefantes", "aventuras", "trepar a sitios", "los animales del bosque"],
-  "stats": {
-    "fuerza": 8,
-    "agilidad": 12,
-    "astucia": 10,
-    "valor": 14
+  "attributes": {
+    "strength": 3,
+    "speed": 4,
+    "intellect": 3,
+    "willpower": 5,
+    "awareness": 4,
+    "presence": 6
   },
+  "skills": {},
+  "tags": ["niño", "explorador"],
   "language": "es",
   "seed_prompt": null
-
 }

@@ -6,16 +6,21 @@
 - Raises QuitRequested → break the game loop.
 
 Commands implemented:
-  /status   — turn count, player name, session age
-  /roll <spec> — dice roll (e.g. /roll 2d6+3)
-  /save     — force-persist the current session
-  /reset    — clear history and session
-  /quit     — exit the game
+  /status            — turn count, player name, session age
+  /roll <spec>       — dice roll (e.g. /roll 2d6+3)
+  /check <rule_id> [json_context] — action check via rules backend
+  /save              — force-persist the current session
+  /reset             — clear history and session
+  /quit              — exit the game
 """
 
+import json
 from collections.abc import Callable
 from datetime import datetime, timezone
+from typing import Any
 
+from fante.domain.actor import profile_to_actor
+from fante.domain.profile import PlayerProfile
 from fante.manager import QuitRequested
 from fante.ports import RulesPort
 
@@ -35,6 +40,7 @@ class CommandHandler:
         reset_fn: Callable[[], None],
         save_fn: Callable[[], None],
         rules_port: RulesPort | None = None,
+        get_profile: Callable[[], PlayerProfile] | None = None,
     ) -> None:
         self._profile_name = profile_name
         self._get_turn_index = get_turn_index
@@ -42,6 +48,7 @@ class CommandHandler:
         self._reset_fn = reset_fn
         self._save_fn = save_fn
         self._rules = rules_port
+        self._get_profile = get_profile
 
     def __call__(self, line: str) -> str | None:
         if not line.startswith("/"):
@@ -60,6 +67,8 @@ class CommandHandler:
             return self._save()
         if cmd == "/roll":
             return self._roll(arg)
+        if cmd == "/check":
+            return self._check(arg)
         return None  # unknown /command — let narrator handle it
 
     # ------------------------------------------------------------------
@@ -93,3 +102,39 @@ class CommandHandler:
             return f"🎲 {result}"
         except ValueError as exc:
             return f"Dados inválidos: {exc}"
+
+    def _check(self, arg: str) -> str:
+        parts = arg.split(maxsplit=1)
+        if not parts:
+            return "Uso: /check <rule_id> [json_context]  (ej: /check climb)"
+        rule_id = parts[0]
+        context: dict[str, Any] | None = None
+        if len(parts) > 1:
+            try:
+                context = json.loads(parts[1])
+            except json.JSONDecodeError as exc:
+                return f"Contexto JSON inválido: {exc}"
+
+        if self._rules is None:
+            return "(El sistema de reglas no está disponible.)"
+        if self._get_profile is None:
+            return "(Perfil no accesible desde el comando /check.)"
+        try:
+            actor = profile_to_actor(self._get_profile())
+            result = self._rules.check(rule_id, actor, context)
+        except NotImplementedError:
+            return "Necesitas FANTE_RULES_BACKEND=mcp para usar /check."
+        except Exception as exc:
+            return f"Error al resolver la acción: {exc}"
+
+        plot = ", ".join(d.value for d in result.plot_dice) or "—"
+        seed = result.narration_seed or "—"
+        status = "✓ Éxito" if result.success else "✗ Fallo"
+        return (
+            f"[{result.rule_id} / {result.pack_name}] "
+            f"Total: {result.total} vs DC {result.difficulty} → {status}\n"
+            f"  Tirada: {result.kept_roll} | Attr: +{result.attribute_bonus} "
+            f"| Skill: +{result.skill_bonus} | Sit: {result.situational_modifier:+d}\n"
+            f"  Dados de trama: {plot}\n"
+            f"  Semilla narrativa: {seed}"
+        )

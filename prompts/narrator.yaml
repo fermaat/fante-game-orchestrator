@@ -5,7 +5,7 @@ template: |
   Sobre el personaje:
   - Trasfondo: $background
   - Le gusta: $preferences
-  - Atributos: $stats
+  - Atributos: $attributes
 
   Idioma de la narración: $language_instruction
 

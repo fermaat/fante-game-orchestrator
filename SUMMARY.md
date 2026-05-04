@@ -37,13 +37,20 @@ src/fante/
 │   └── subscribers.py      # install_logging_subscriber
 └── adapters/               # Concrete implementations of ports
     ├── bridge_narrator.py  # NarratorPort via core-llm-bridge BridgeEngine
-    ├── local_dice.py       # RulesPort — SystemRandom, parses XdY±Z
+    ├── local_dice.py       # RulesPort — SystemRandom, parses XdY±Z (offline/test)
+    ├── mcp_rules.py        # RulesPort — MCPRulesAdapter (Phase 2.A)
     ├── json_session_store.py  # SessionStore — ~/.fante/session.json
     ├── stdio_io.py         # StdinInput, StdoutOutput
-    └── json_profile_store.py
+    └── json_profile_store.py  # v1→v2 migration aware
+
+domain/
+    ├── actor.py            # Actor, profile_to_actor (mirrors mcp-game-rules wire format)
+    ├── turn.py             # ActionIntent (for Phase 2.B classifier)
+    ├── rules.py            # RollResult + CheckResult, AppliedModifier, PlotDieFace
+    └── ...
 
 data/
-└── player_profile.json     # Fante's character sheet
+└── player_profile.json     # Fante's character sheet (schema_version 2)
 
 prompts/
 └── narrator.yaml           # Externalised narrator prompt (fallback to inline)
@@ -55,14 +62,16 @@ docs/
 └── core_llm_bridge_specs.md
 
 tests/
-├── conftest.py             # MockProvider, FakeNarrator/Input/Output/Session, make_game
+├── conftest.py             # MockProvider, FakeNarrator/Input/Output/Session/Rules, make_game
 ├── test_event_bus.py       # unit
-├── test_profile.py         # unit
+├── test_profile.py         # unit (incl. v1→v2 migration)
+├── test_actor_translation.py  # unit
+├── test_mcp_rules.py       # unit (FakeRulesPort) + integration (live server)
 ├── test_manager.py         # functional
 ├── test_narrator.py        # functional (real BridgeNarrator, MockProvider)
 ├── test_dice.py            # unit
 ├── test_session_store.py   # unit + functional
-├── test_commands.py        # functional
+├── test_commands.py        # functional (incl. /check)
 ├── test_dad_monitor.py     # unit
 └── test_integration.py     # marker-gated, hits real Ollama
 ```
@@ -75,7 +84,7 @@ tests/
 | `InputPort` | `StdinInput` | `WhisperInput` (speech-io-hub) |
 | `OutputPort` | `StdoutOutput` | `TTSOutput`, `GodotOutput` |
 | `ProfileStore` | `JSONProfileStore` | `SqliteProfileStore` |
-| `RulesPort` | `LocalDice` | `MCPRulesAdapter` (Phase 2) |
+| `RulesPort` | `MCPRulesAdapter` (Phase 2.A) | `LocalDice` (offline/test fallback) |
 | `SessionStore` | `JSONSessionStore` (`~/.fante/session.json`) | `SqliteSessionStore` |
 
 Planned additions (when their first consumer arrives):
@@ -145,7 +154,8 @@ pdm run pytest -m integration -v   # opt-in, requires Ollama running
 
 - **Phase 1.0 ✓** — Walking skeleton: ports/adapters, EventBus, runnable terminal RPG, full test suite, integration test green against Ollama.
 - **Phase 1.5 ✓** — Polish: externalised prompt YAML, `seed_prompt` opening scene, profiler hook, Dad's Monitor, `RulesPort`+`LocalDice`, `SessionStore`+`JSONSessionStore`, slash commands (`/status /roll /save /reset /quit`), `--reset` CLI flag. 55 tests pass.
-- **Phase 2** — `mcp-game-rules` repo (created manually) → `MCPRulesAdapter`. Possibly `KnowledgePort` + `CopperKnowledgeAdapter` for richer lore / educational modules.
+- **Phase 2.A ✓** — `PlayerProfile` v2 (Cosmere attributes/skills/tags), `Actor` + `profile_to_actor`, `CheckResult`/`AppliedModifier`/`PlotDieFace` domain types, `MCPRulesAdapter` (persistent subprocess, sync facade), `/check` slash command, `FANTE_RULES_BACKEND` + `MCP_RULES_COMMAND` env vars, `mcp>=1.27` dep. 67 tests pass.
+- **Phase 2.B** — `ActionClassifier` (pre-narrator LLM call) + `PerformanceEvaluator` + skill/dice mode toggle.
 - **Phase 3** — `speech-io-hub` repo → Whisper input + TTS output. Async at the orchestrator seam.
 - **Phase 4** — `world-engine-godot` repo → WebSocket `WorldPort`.
 

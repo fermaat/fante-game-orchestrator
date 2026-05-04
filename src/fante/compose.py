@@ -21,6 +21,15 @@ from fante.events.bus import EventBus
 from fante.events.dad_monitor import install_dad_monitor
 from fante.events.subscribers import install_logging_subscriber
 from fante.manager import GameManager
+from fante.ports import RulesPort
+
+
+def _build_rules(settings: FanteSettings) -> RulesPort:
+    if settings.fante_rules_backend == "mcp":
+        from fante.adapters.mcp_rules import MCPRulesAdapter
+
+        return MCPRulesAdapter(command=settings.mcp_rules_command)
+    return LocalDice()
 
 
 def build_game(settings: FanteSettings | None = None, reset: bool = False) -> GameManager:
@@ -57,7 +66,7 @@ def build_game(settings: FanteSettings | None = None, reset: bool = False) -> Ga
     if settings.fante_monitor:
         install_dad_monitor(bus, settings.fante_monitor_path)
 
-    dice = LocalDice()
+    rules = _build_rules(settings)
 
     game = GameManager(
         narrator=narrator,
@@ -72,7 +81,8 @@ def build_game(settings: FanteSettings | None = None, reset: bool = False) -> Ga
             get_session_started_at=lambda: game.session_started_at,
             reset_fn=lambda: game.reset(),
             save_fn=lambda: game.save_session(),
-            rules_port=dice,
+            rules_port=rules,
+            get_profile=lambda: profile,
         ),
     )
 

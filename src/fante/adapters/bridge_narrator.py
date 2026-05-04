@@ -22,7 +22,7 @@ Eres el narrador de una aventura de rol para $name.
 Sobre el personaje:
 - Trasfondo: $background
 - Le gusta: $preferences
-- Atributos: $stats
+- Atributos: $attributes
 
 Idioma de la narración: $language_instruction
 
@@ -63,11 +63,10 @@ def _build_system_prompt(
             name=profile.name,
             background=profile.background or "(sin definir)",
             preferences=", ".join(profile.preferences) if profile.preferences else "(ninguna)",
-            stats=(
-                ", ".join(f"{k}: {v}" for k, v in profile.stats.items())
-                if profile.stats
-                else "(sin atributos)"
-            ),
+            attributes=", ".join(
+                f"{k}: {v}" for k, v in profile.attributes.model_dump().items() if v != 0
+            )
+            or "(sin atributos)",
             language_instruction=_LANGUAGE_INSTRUCTION[profile.language],
         ),
     )

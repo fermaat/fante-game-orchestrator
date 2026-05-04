@@ -12,6 +12,7 @@ dependencies = [
     "core-utils @ git+https://github.com/fermaat/core-utils.git",
     "core-llm-bridge @ git+https://github.com/fermaat/core-llm-bridge.git",
     "pyyaml>=6.0.3",
+    "mcp>=1.27.0",
 ]
 authors = [
     {name = "Fernando Velasco", email = "fermaat.vl@gmail.com"},

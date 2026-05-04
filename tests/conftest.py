@@ -21,7 +21,9 @@ from core_llm_bridge.core.base import BaseLLMProvider
 from core_llm_bridge.core.models import BridgeResponse, ConversationBuffer, LLMConfig
 
 from fante.adapters.bridge_narrator import BridgeNarrator
-from fante.domain.profile import PlayerProfile
+from fante.domain.actor import Actor
+from fante.domain.profile import Attributes, PlayerProfile
+from fante.domain.rules import AppliedModifier, CheckResult, PlotDieFace, RollResult
 from fante.events.bus import EventBus
 from fante.manager import GameManager
 
@@ -132,13 +134,51 @@ class FakeSessionStore:
 # ---------- Builders -------------------------------------------------------
 
 
+class FakeRulesPort:
+    def __init__(self) -> None:
+        self._check_result: CheckResult | None = None
+
+    def set_check_result(self, result: CheckResult) -> None:
+        self._check_result = result
+
+    def roll(self, spec: str) -> RollResult:
+        return RollResult(spec=spec, total=10, breakdown=[10])
+
+    def check(
+        self,
+        rule_id: str,
+        actor: Actor,
+        context: dict[str, Any] | None = None,
+        player_score: int | None = None,
+    ) -> CheckResult:
+        if self._check_result is not None:
+            return self._check_result
+        return CheckResult(
+            rule_id=rule_id,
+            pack_name="fake",
+            d20_rolls=[10],
+            kept_roll=10,
+            attribute_bonus=0,
+            skill_bonus=0,
+            situational_modifier=0,
+            total=10,
+            difficulty=10,
+            success=True,
+            plot_dice=[PlotDieFace.BLANK],
+            applied_modifiers=[],
+            narration_seed=None,
+        )
+
+
 @pytest.fixture
 def sample_profile() -> PlayerProfile:
     return PlayerProfile(
         name="Fante",
         background="Joven explorador",
         preferences=["elefantes", "aventuras"],
-        stats={"valor": 14},
+        attributes=Attributes(
+            strength=3, speed=4, intellect=3, willpower=5, awareness=4, presence=6
+        ),
         language="es",
     )
 

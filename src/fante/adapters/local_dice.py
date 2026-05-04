@@ -6,8 +6,10 @@ MCPRulesAdapter; LocalDice stays as the offline/test fallback.
 
 import random
 import re
+from typing import Any
 
-from fante.domain.rules import RollResult
+from fante.domain.actor import Actor
+from fante.domain.rules import CheckResult, RollResult
 
 _DICE_RE = re.compile(
     r"^(?P<count>[1-9]\d*)?d(?P<sides>[1-9]\d*)(?P<mod>[+-][1-9]\d*)?$",
@@ -38,3 +40,14 @@ class LocalDice:
         rolls = [_rng.randint(1, sides) for _ in range(count)]
         breakdown = rolls + ([mod] if mod != 0 else [])
         return RollResult(spec=spec, total=sum(rolls) + mod, breakdown=breakdown)
+
+    def check(
+        self,
+        rule_id: str,
+        actor: Actor,
+        context: dict[str, Any] | None = None,
+        player_score: int | None = None,
+    ) -> CheckResult:
+        raise NotImplementedError(
+            "LocalDice only supports roll(); use MCPRulesAdapter for check()."
+        )
