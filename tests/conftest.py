@@ -68,12 +68,14 @@ class FakeNarrator:
         self._responses = list(responses)
         self.received: list[str] = []
         self.received_check_results: list[Any] = []
+        self.received_knowledge: list[Any] = []
         self.reset_count = 0
         self._history: list[dict[str, str]] = []
 
-    def respond(self, user_input: str, check_result: Any = None) -> str:
+    def respond(self, user_input: str, check_result: Any = None, knowledge: Any = None) -> str:
         self.received.append(user_input)
         self.received_check_results.append(check_result)
+        self.received_knowledge.append(knowledge)
         return self._responses.pop(0) if self._responses else "(sin respuesta)"
 
     def reset(self) -> None:

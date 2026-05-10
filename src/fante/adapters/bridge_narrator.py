@@ -103,9 +103,19 @@ class BridgeNarrator:
             max_history_length=max_history_length,
         )
 
-    def respond(self, user_input: str, check_result: CheckResult | None = None) -> str:
+    def respond(
+        self,
+        user_input: str,
+        check_result: CheckResult | None = None,
+        knowledge: str | None = None,
+    ) -> str:
+        context_parts = []
         if check_result is not None:
-            turn_input = f"{_build_check_context(check_result)}\n{user_input}"
+            context_parts.append(_build_check_context(check_result))
+        if knowledge is not None:
+            context_parts.append(f"[Conocimiento relevante]\n{knowledge}")
+        if context_parts:
+            turn_input = "\n".join(context_parts) + "\n" + user_input
         else:
             turn_input = user_input
         with profiler.step("llm_call") as s:

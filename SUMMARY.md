@@ -40,7 +40,8 @@ src/fante/
 └── adapters/               # Concrete implementations of ports
     ├── bridge_narrator.py  # NarratorPort — weaves check_result into narration
     ├── llm_evaluator.py    # PerformanceEvaluatorPort — LLM-as-judge for skill mode
-    ├── noop_knowledge.py   # KnowledgePort — no-op until Phase 2.C
+    ├── noop_knowledge.py   # KnowledgePort — no-op (default when copper disabled)
+    ├── copper_knowledge.py # KnowledgePort — HTTP client for copper /minds/{mind}/tap
     ├── local_dice.py       # RulesPort — SystemRandom (offline/test fallback)
     ├── mcp_rules.py        # RulesPort — MCPRulesAdapter (Phase 2.A)
     ├── json_session_store.py  # SessionStore — ~/.fante/session.json
@@ -54,7 +55,15 @@ domain/
     └── events.py           # + ActionClassified, CheckResolved
 
 data/
-└── player_profile.json     # Fante's character sheet (schema_version 2)
+├── player_profile.json     # Fante's character sheet (schema_version 2)
+└── copper_minds/           # Source content for copper knowledge minds
+    ├── adventure/raw/lore.md
+    ├── math/raw/curriculum.md
+    ├── languages/raw/vocab.md
+    └── lore/raw/world_lore.md
+
+scripts/
+└── setup_copper_minds.sh   # Bootstrap: forge + ingest the four copper minds
 
 prompts/
 ├── narrator.yaml           # Externalised narrator prompt
@@ -137,6 +146,9 @@ Inherits all bridge env vars (`OLLAMA_*`, `ANTHROPIC_*`, `OPENAI_*`, `LOG_*`).
 | `PLAYER_PROFILE_PATH` | `data/player_profile.json` | Profile JSON path |
 | `MAX_HISTORY_LENGTH` | `30` | Messages retained before pruning |
 | `LOG_LEVEL` | `INFO` | Bridge + orchestrator logs |
+| `FANTE_COPPER_ENABLED` | `false` | Enable copper knowledge integration |
+| `FANTE_COPPER_URL` | `http://127.0.0.1:8000` | Copper server base URL |
+| `FANTE_COPPER_MIND_MAP` | `{adventure,math,languages,lore}` | JSON mapping topic→mind name |
 
 ## Dependencies
 
@@ -165,7 +177,7 @@ pdm run pytest -m integration -v   # opt-in, requires Ollama running
 - **Phase 1.5 ✓** — Polish: externalised prompt YAML, `seed_prompt` opening scene, profiler hook, Dad's Monitor, `RulesPort`+`LocalDice`, `SessionStore`+`JSONSessionStore`, slash commands (`/status /roll /save /reset /quit`), `--reset` CLI flag. 55 tests pass.
 - **Phase 2.A ✓** — `PlayerProfile` v2 (Cosmere attributes/skills/tags), `Actor` + `profile_to_actor`, `CheckResult`/`AppliedModifier`/`PlotDieFace` domain types, `MCPRulesAdapter` (persistent subprocess, sync facade), `/check` slash command, `FANTE_RULES_BACKEND` + `MCP_RULES_COMMAND` env vars, `mcp>=1.27` dep. 67 tests pass.
 - **Phase 2.B ✓** — `ActionClassifier` + `LLMPerformanceEvaluator` + turn lifecycle (classify→eval→check→narrate), modo dice/skill (`/dice` `/skill`), `KnowledgePort` + `NoopKnowledgeAdapter` stub, `ActionClassified`/`CheckResolved` events. 82 tests pass.
-- **Phase 2.C** — `CopperKnowledgeAdapter`: real knowledge backend. `NarratorPort.respond` extended with `knowledge` param.
+- **Phase 2.C ✓** — `CopperKnowledgeAdapter` (HTTP client for copper `/minds/{mind}/tap`), `ActionIntent.knowledge_topic` field, `NarratorPort.respond` + `BridgeNarrator` extended with `knowledge` param, `GameManager` queries knowledge when topic is set, 4 copper minds (adventure/math/languages/lore) with sample content. 84 tests pass.
 - **Phase 3** — `speech-io-hub` repo → Whisper input + TTS output. Async at the orchestrator seam.
 - **Phase 4** — `world-engine-godot` repo → WebSocket `WorldPort`.
 

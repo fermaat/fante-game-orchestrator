@@ -24,6 +24,7 @@ from fante.ports import InputPort, NarratorPort, OutputPort, ProfileStore, Rules
 
 if TYPE_CHECKING:
     from fante.ports.evaluator import PerformanceEvaluatorPort
+    from fante.ports.knowledge import KnowledgePort
     from fante.turn.classifier import ActionClassifier
 
 Mode = Literal["dice", "skill"]
@@ -46,6 +47,7 @@ class GameManager:
         rules_port: RulesPort | None = None,
         classifier: "ActionClassifier | None" = None,
         evaluator: "PerformanceEvaluatorPort | None" = None,
+        knowledge: "KnowledgePort | None" = None,
         default_mode: Mode = "skill",
     ) -> None:
         self._narrator = narrator
@@ -58,6 +60,7 @@ class GameManager:
         self._rules = rules_port
         self._classifier = classifier
         self._evaluator = evaluator
+        self._knowledge = knowledge
         self._mode: Mode = default_mode
         self._turn_index = 0
         self._session_started_at: datetime = datetime.now(timezone.utc)
@@ -92,6 +95,7 @@ class GameManager:
         self._bus.publish(TurnStarted(turn_index=idx, user_input=user_input))
 
         check_result = None
+        knowledge: str | None = None
 
         if self._classifier is not None and self._rules is not None:
             profile = self._profile_store.load()
@@ -110,7 +114,23 @@ class GameManager:
                 )
                 self._bus.publish(CheckResolved(turn_index=idx, result=check_result))
 
-        narration = self._narrator.respond(user_input, check_result)
+                if intent.knowledge_topic and self._knowledge is not None:
+                    ctx = {
+                        "action": intent.rule_id,
+                        "success": check_result.success,
+                        "roll": check_result.kept_roll,
+                        "difficulty": check_result.difficulty,
+                        "actor": profile.name,
+                        "context": intent.context or {},
+                    }
+                    try:
+                        knowledge = self._knowledge.query(intent.knowledge_topic, ctx)
+                    except Exception:
+                        logger.exception(
+                            "knowledge query failed for topic=%s", intent.knowledge_topic
+                        )
+
+        narration = self._narrator.respond(user_input, check_result, knowledge)
         self._bus.publish(NarrationGenerated(turn_index=idx, narration=narration))
         self._bus.publish(TurnFinished(turn_index=idx))
         self._autosave()

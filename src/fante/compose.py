@@ -18,10 +18,24 @@ from fante.adapters import (
 from fante.cli.commands import CommandHandler
 from fante.config import FanteSettings
 from fante.events.bus import EventBus
+from fante.ports.knowledge import KnowledgePort
 from fante.events.dad_monitor import install_dad_monitor
 from fante.events.subscribers import install_logging_subscriber
 from fante.manager import GameManager
 from fante.ports import RulesPort
+
+
+def _build_knowledge(settings: FanteSettings) -> KnowledgePort:
+    if settings.fante_copper_enabled:
+        from fante.adapters.copper_knowledge import CopperKnowledgeAdapter
+
+        return CopperKnowledgeAdapter(
+            copper_url=settings.fante_copper_url,
+            mind_map=settings.fante_copper_mind_map,
+        )
+    from fante.adapters.noop_knowledge import NoopKnowledgeAdapter
+
+    return NoopKnowledgeAdapter()
 
 
 def _build_rules(settings: FanteSettings) -> RulesPort:
@@ -99,6 +113,8 @@ def build_game(settings: FanteSettings | None = None, reset: bool = False) -> Ga
             fallback_score=settings.fante_evaluator_fallback_score,
         )
 
+    knowledge = _build_knowledge(settings)
+
     game = GameManager(
         narrator=narrator,
         input_port=StdinInput(),
@@ -109,6 +125,7 @@ def build_game(settings: FanteSettings | None = None, reset: bool = False) -> Ga
         rules_port=rules,
         classifier=classifier,
         evaluator=evaluator,
+        knowledge=knowledge,
         default_mode=settings.fante_default_mode,
         command_handler=CommandHandler(
             profile_name=profile.name,

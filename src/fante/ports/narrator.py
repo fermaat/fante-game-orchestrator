@@ -14,8 +14,14 @@ class NarratorPort(Protocol):
     bridge adapter delegates to `BridgeEngine`'s `ConversationBuffer`).
     """
 
-    def respond(self, user_input: str, check_result: "CheckResult | None" = None) -> str:
-        """Generate a narration. If check_result is given, weave its narration_seed."""
+    def respond(
+        self,
+        user_input: str,
+        check_result: "CheckResult | None" = None,
+        knowledge: str | None = None,
+    ) -> str:
+        """Generate a narration. If check_result is given, weave its narration_seed.
+        If knowledge is given, include it as contextual background."""
         ...
 
     def reset(self) -> None:

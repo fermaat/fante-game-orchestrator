@@ -152,3 +152,61 @@ def test_action_classified_and_check_resolved_events_published(make_game) -> Non
     types = [type(e) for e in received]
     assert ActionClassified in types
     assert CheckResolved in types
+
+
+class FakeKnowledge:
+    def __init__(self, response: str = "Sample knowledge") -> None:
+        self._response = response
+        self.calls: list[tuple[str, dict]] = []  # type: ignore[type-arg]
+
+    def query(self, topic: str, context: dict) -> str:  # type: ignore[type-arg]
+        self.calls.append((topic, context))
+        return self._response
+
+
+@pytest.mark.functional
+def test_action_with_knowledge_topic_queries_knowledge_adapter(make_game) -> None:  # type: ignore[no-untyped-def]
+    from tests.conftest import FakeRulesPort
+
+    rules = FakeRulesPort()
+    rules.set_check_result(_make_check_result())
+    clf = FakeClassifier(intent=ActionIntent(rule_id="climb", knowledge_topic="adventure"))
+    knowledge = FakeKnowledge(response="Climbing on wet surfaces requires technique.")
+
+    game, _, out, narrator = make_game(
+        narrator_responses=["trepas con conocimiento"],
+        input_lines=["trepo", None],
+    )
+    game._classifier = clf
+    game._rules = rules
+    game._knowledge = knowledge
+    game.run()
+
+    assert len(knowledge.calls) == 1
+    topic, ctx = knowledge.calls[0]
+    assert topic == "adventure"
+    assert ctx["action"] == "climb"
+    assert ctx["success"] is True
+    assert narrator.received_knowledge == ["Climbing on wet surfaces requires technique."]
+
+
+@pytest.mark.functional
+def test_action_without_knowledge_topic_skips_knowledge_adapter(make_game) -> None:  # type: ignore[no-untyped-def]
+    from tests.conftest import FakeRulesPort
+
+    rules = FakeRulesPort()
+    rules.set_check_result(_make_check_result())
+    clf = FakeClassifier(intent=ActionIntent(rule_id="climb"))  # no knowledge_topic
+    knowledge = FakeKnowledge()
+
+    game, _, out, narrator = make_game(
+        narrator_responses=["trepas"],
+        input_lines=["trepo", None],
+    )
+    game._classifier = clf
+    game._rules = rules
+    game._knowledge = knowledge
+    game.run()
+
+    assert len(knowledge.calls) == 0
+    assert narrator.received_knowledge == [None]

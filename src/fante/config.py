@@ -37,5 +37,14 @@ class FanteSettings(BridgeSettings):  # type: ignore[misc]
     fante_default_mode: Literal["dice", "skill"] = "skill"
     fante_evaluator_fallback_score: int = 12
 
+    fante_copper_enabled: bool = False
+    fante_copper_url: str = "http://127.0.0.1:8000"
+    fante_copper_mind_map: dict[str, str] = {
+        "adventure": "adventure",
+        "math": "math",
+        "languages": "languages",
+        "lore": "lore",
+    }
+
 
 __all__ = ["FanteSettings"]
