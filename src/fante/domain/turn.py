@@ -10,4 +10,3 @@ class ActionIntent:
 
     rule_id: str
     context: dict[str, Any] = field(default_factory=dict)
-    knowledge_topic: str | None = None

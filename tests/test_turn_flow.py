@@ -165,12 +165,14 @@ class FakeKnowledge:
 
 
 @pytest.mark.functional
-def test_action_with_knowledge_topic_queries_knowledge_adapter(make_game) -> None:  # type: ignore[no-untyped-def]
+def test_rule_knowledge_topic_queries_knowledge_adapter(make_game) -> None:  # type: ignore[no-untyped-def]
     from tests.conftest import FakeRulesPort
 
     rules = FakeRulesPort()
-    rules.set_check_result(_make_check_result())
-    clf = FakeClassifier(intent=ActionIntent(rule_id="climb", knowledge_topic="adventure"))
+    result = _make_check_result()
+    result = result.model_copy(update={"knowledge_topic": "adventure"})
+    rules.set_check_result(result)
+    clf = FakeClassifier(intent=ActionIntent(rule_id="climb"))
     knowledge = FakeKnowledge(response="Climbing on wet surfaces requires technique.")
 
     game, _, out, narrator = make_game(
@@ -191,12 +193,36 @@ def test_action_with_knowledge_topic_queries_knowledge_adapter(make_game) -> Non
 
 
 @pytest.mark.functional
-def test_action_without_knowledge_topic_skips_knowledge_adapter(make_game) -> None:  # type: ignore[no-untyped-def]
+def test_session_topic_used_when_rule_has_no_topic(make_game) -> None:  # type: ignore[no-untyped-def]
     from tests.conftest import FakeRulesPort
 
     rules = FakeRulesPort()
-    rules.set_check_result(_make_check_result())
-    clf = FakeClassifier(intent=ActionIntent(rule_id="climb"))  # no knowledge_topic
+    rules.set_check_result(_make_check_result())  # knowledge_topic=None
+    clf = FakeClassifier(intent=ActionIntent(rule_id="climb"))
+    knowledge = FakeKnowledge(response="Física: fricción en superficies mojadas.")
+
+    game, _, out, narrator = make_game(
+        narrator_responses=["trepas"],
+        input_lines=["trepo", None],
+    )
+    game._classifier = clf
+    game._rules = rules
+    game._knowledge = knowledge
+    game._session_topic = "adventure"
+    game.run()
+
+    assert len(knowledge.calls) == 1
+    assert knowledge.calls[0][0] == "adventure"
+    assert narrator.received_knowledge == ["Física: fricción en superficies mojadas."]
+
+
+@pytest.mark.functional
+def test_no_topic_anywhere_skips_knowledge_adapter(make_game) -> None:  # type: ignore[no-untyped-def]
+    from tests.conftest import FakeRulesPort
+
+    rules = FakeRulesPort()
+    rules.set_check_result(_make_check_result())  # knowledge_topic=None
+    clf = FakeClassifier(intent=ActionIntent(rule_id="climb"))
     knowledge = FakeKnowledge()
 
     game, _, out, narrator = make_game(

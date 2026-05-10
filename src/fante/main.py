@@ -14,10 +14,16 @@ def main() -> int:
         action="store_true",
         help="Borra la sesión guardada y empieza desde cero.",
     )
+    parser.add_argument(
+        "--topic",
+        default=None,
+        metavar="TOPIC",
+        help="Tema de conocimiento para toda la sesión (ej: adventure, math, lore).",
+    )
     args = parser.parse_args()
 
     try:
-        game = build_game(reset=args.reset)
+        game = build_game(reset=args.reset, session_topic=args.topic)
     except FileNotFoundError as exc:
         print(f"No se encontró el archivo de perfil: {exc}")
         return 1

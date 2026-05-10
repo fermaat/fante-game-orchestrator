@@ -55,7 +55,11 @@ def _make_provider(settings: FanteSettings, model_override: str) -> OllamaProvid
     )
 
 
-def build_game(settings: FanteSettings | None = None, reset: bool = False) -> GameManager:
+def build_game(
+    settings: FanteSettings | None = None,
+    reset: bool = False,
+    session_topic: str | None = None,
+) -> GameManager:
     settings = settings or FanteSettings()
     configure_logger(settings)
 
@@ -126,6 +130,7 @@ def build_game(settings: FanteSettings | None = None, reset: bool = False) -> Ga
         classifier=classifier,
         evaluator=evaluator,
         knowledge=knowledge,
+        session_topic=session_topic,
         default_mode=settings.fante_default_mode,
         command_handler=CommandHandler(
             profile_name=profile.name,
@@ -137,6 +142,7 @@ def build_game(settings: FanteSettings | None = None, reset: bool = False) -> Ga
             get_profile=lambda: profile,
             get_mode=lambda: game.mode,
             set_mode=lambda m: game.set_mode(m),
+            set_session_topic=lambda t: game.set_session_topic(t),
         ),
     )
 

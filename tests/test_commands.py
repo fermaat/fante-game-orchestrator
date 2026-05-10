@@ -151,6 +151,29 @@ class TestCommandHandler:
         assert "climb" in result
         assert "Éxito" in result or "Fallo" in result
 
+    def test_topic_sets_session_topic(self) -> None:
+        recorded: list[str | None] = []
+        h = _make_handler()
+        h._set_session_topic = lambda t: recorded.append(t)
+        result = h("/topic adventure")
+        assert result is not None
+        assert "adventure" in result
+        assert recorded == ["adventure"]
+
+    def test_topic_empty_clears_session_topic(self) -> None:
+        recorded: list[str | None] = []
+        h = _make_handler()
+        h._set_session_topic = lambda t: recorded.append(t)
+        result = h("/topic")
+        assert result is not None
+        assert recorded == [None]
+
+    def test_topic_without_handler_returns_message(self) -> None:
+        h = _make_handler()  # no set_session_topic wired
+        result = h("/topic math")
+        assert result is not None
+        assert "disponible" in result
+
     def test_game_manager_dispatches_commands(self, make_game: object) -> None:
         """Integration: GameManager routes /reset through the command handler."""
         reset_called: list[bool] = []

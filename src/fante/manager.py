@@ -48,6 +48,7 @@ class GameManager:
         classifier: "ActionClassifier | None" = None,
         evaluator: "PerformanceEvaluatorPort | None" = None,
         knowledge: "KnowledgePort | None" = None,
+        session_topic: str | None = None,
         default_mode: Mode = "skill",
     ) -> None:
         self._narrator = narrator
@@ -61,6 +62,7 @@ class GameManager:
         self._classifier = classifier
         self._evaluator = evaluator
         self._knowledge = knowledge
+        self._session_topic = session_topic
         self._mode: Mode = default_mode
         self._turn_index = 0
         self._session_started_at: datetime = datetime.now(timezone.utc)
@@ -83,6 +85,9 @@ class GameManager:
 
     def set_mode(self, mode: Mode) -> None:
         self._mode = mode
+
+    def set_session_topic(self, topic: str | None) -> None:
+        self._session_topic = topic
 
     # ------------------------------------------------------------------
     # Core operations
@@ -114,7 +119,8 @@ class GameManager:
                 )
                 self._bus.publish(CheckResolved(turn_index=idx, result=check_result))
 
-                if intent.knowledge_topic and self._knowledge is not None:
+                resolved_topic = check_result.knowledge_topic or self._session_topic
+                if resolved_topic and self._knowledge is not None:
                     ctx = {
                         "action": intent.rule_id,
                         "success": check_result.success,
@@ -124,11 +130,9 @@ class GameManager:
                         "context": intent.context or {},
                     }
                     try:
-                        knowledge = self._knowledge.query(intent.knowledge_topic, ctx)
+                        knowledge = self._knowledge.query(resolved_topic, ctx)
                     except Exception:
-                        logger.exception(
-                            "knowledge query failed for topic=%s", intent.knowledge_topic
-                        )
+                        logger.exception("knowledge query failed for topic=%s", resolved_topic)
 
         narration = self._narrator.respond(user_input, check_result, knowledge)
         self._bus.publish(NarrationGenerated(turn_index=idx, narration=narration))

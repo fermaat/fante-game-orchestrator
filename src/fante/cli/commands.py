@@ -11,6 +11,7 @@ Commands implemented:
   /check <rule_id> [json_context] — action check via rules backend
   /dice              — switch to dice mode for this session
   /skill             — switch to skill mode for this session
+  /topic [name]      — set session knowledge topic (empty to clear)
   /save              — force-persist the current session
   /reset             — clear history and session
   /quit              — exit the game
@@ -47,6 +48,7 @@ class CommandHandler:
         get_profile: Callable[[], PlayerProfile] | None = None,
         get_mode: Callable[[], Mode] | None = None,
         set_mode: Callable[[Mode], None] | None = None,
+        set_session_topic: Callable[[str | None], None] | None = None,
     ) -> None:
         self._profile_name = profile_name
         self._get_turn_index = get_turn_index
@@ -57,6 +59,7 @@ class CommandHandler:
         self._get_profile = get_profile
         self._get_mode = get_mode
         self._set_mode = set_mode
+        self._set_session_topic = set_session_topic
 
     def __call__(self, line: str) -> str | None:
         if not line.startswith("/"):
@@ -81,6 +84,8 @@ class CommandHandler:
             return self._set_mode_cmd("dice")
         if cmd == "/skill":
             return self._set_mode_cmd("skill")
+        if cmd == "/topic":
+            return self._topic_cmd(arg)
         return None  # unknown /command — let narrator handle it
 
     # ------------------------------------------------------------------
@@ -159,3 +164,12 @@ class CommandHandler:
         self._set_mode(mode)
         labels = {"dice": "dados (d20)", "skill": "habilidad (evaluador)"}
         return f"Modo cambiado a: {labels[mode]}."
+
+    def _topic_cmd(self, arg: str) -> str:
+        if self._set_session_topic is None:
+            return "(El cambio de tema no está disponible.)"
+        topic = arg.strip() or None
+        self._set_session_topic(topic)
+        if topic:
+            return f"Tema de sesión: {topic}. Las acciones consultarán ese conocimiento."
+        return "Tema de sesión eliminado."
