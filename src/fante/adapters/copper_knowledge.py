@@ -27,7 +27,7 @@ class CopperKnowledgeAdapter:
         question = json.dumps(context or {})
         url = f"{self._base_url}/minds/{mind}/tap"
 
-        logger.info("copper_knowledge | topic=%s mind=%s url=%s", topic, mind, url)
+        logger.info(f"copper_knowledge | topic={topic} mind={mind} url={url}")
 
         response = httpx.post(
             url,

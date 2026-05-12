@@ -29,15 +29,17 @@ fi
 COPPER_URL="$FANTE_COPPER_URL"
 MINDS_DIR="$REPO_ROOT/data/copper_minds"
 
-declare -A TOPICS=(
-  [adventure]="adventure actions and climbing techniques for role-playing games"
-  [math]="math educational content for role-playing games"
-  [languages]="language learning content for role-playing games"
-  [lore]="world lore and setting for role-playing games"
-)
+topic_for() {
+  case "$1" in
+    adventure) echo "adventure actions and climbing techniques for role-playing games" ;;
+    math)      echo "math educational content for role-playing games" ;;
+    languages) echo "language learning content for role-playing games" ;;
+    lore)      echo "world lore and setting for role-playing games" ;;
+  esac
+}
 
 for mind in adventure math languages lore; do
-  topic="${TOPICS[$mind]}"
+  topic="$(topic_for "$mind")"
   echo "→ Forging mind: $mind"
   curl -sf -X POST "$COPPER_URL/minds" \
     -H "Content-Type: application/json" \

@@ -114,5 +114,8 @@ class MCPRulesAdapter:
         if player_score is not None:
             args["player_score"] = player_score
         result = self._call_tool("check", args)
+        if result.isError:
+            content = result.content[0].text if result.content else "unknown error"
+            raise RuntimeError(f"MCP check failed for rule '{rule_id}': {content}")
         data: dict[str, Any] = result.structuredContent or {}
         return CheckResult.model_validate(data)

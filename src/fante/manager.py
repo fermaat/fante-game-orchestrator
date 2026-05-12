@@ -132,7 +132,7 @@ class GameManager:
                     try:
                         knowledge = self._knowledge.query(resolved_topic, ctx)
                     except Exception:
-                        logger.exception("knowledge query failed for topic=%s", resolved_topic)
+                        logger.exception(f"knowledge query failed for topic={resolved_topic}")
 
         narration = self._narrator.respond(user_input, check_result, knowledge)
         self._bus.publish(NarrationGenerated(turn_index=idx, narration=narration))
