@@ -36,8 +36,10 @@ Reglas del narrador:
 - Cuando el jugador intente algo arriesgado, describe el intento y el resultado de forma clara.
 - Termina siempre invitando a que el jugador decida qué hace a continuación.
 - Para el modo mixto: introduce palabras o frases cortas en inglés entre paréntesis con su traducción.
-- Cuando recibas un [Resultado de acción], úsalo para enriquecer la narración de forma natural.
-  No lo cites textualmente: conviértelo en parte de la historia.
+- El turno puede traer entre paréntesis "(Contexto interno — ...)" o "(Detalle de fondo ...)".
+  Esa información es SOLO para ti: úsala para enriquecer la narración, pero nunca la repitas
+  literalmente en tu respuesta. Tu respuesta debe leerse como narración pura, sin paréntesis
+  técnicos, sin corchetes, sin "Source:", sin meta-comentarios.
 """
 
 _LANGUAGE_INSTRUCTION: dict[Language, str] = {
@@ -75,15 +77,33 @@ def _build_system_prompt(
     )
 
 
+_ECHO_PREFIXES = (
+    "(Contexto interno",
+    "(Detalle de fondo",
+    "[Resultado de acción",
+    "[Conocimiento",
+)
+
+
+def _strip_echoed_context(text: str) -> str:
+    """Drop leading lines that just mirror the metadata prefix we sent in."""
+    lines = text.split("\n")
+    while lines and (lines[0].strip().startswith(_ECHO_PREFIXES) or not lines[0].strip()):
+        lines.pop(0)
+    return "\n".join(lines)
+
+
 def _build_check_context(result: CheckResult) -> str:
-    outcome = "éxito" if result.success else "fallo"
-    seed = f" | {result.narration_seed}" if result.narration_seed else ""
+    outcome = "con éxito" if result.success else "sin éxito"
+    seed = f": {result.narration_seed}" if result.narration_seed else ""
     plot = (
-        " | dados de trama: " + ", ".join(d.value for d in result.plot_dice)
+        f" Dados de trama: {', '.join(d.value for d in result.plot_dice)}."
         if result.plot_dice
         else ""
     )
-    return f"[Resultado de acción: {result.rule_id} → {outcome}{seed}{plot}]"
+    return (
+        f"(Contexto interno — el chequeo de '{result.rule_id}' se resolvió {outcome}{seed}.{plot})"
+    )
 
 
 class BridgeNarrator:
@@ -113,15 +133,24 @@ class BridgeNarrator:
         if check_result is not None:
             context_parts.append(_build_check_context(check_result))
         if knowledge is not None:
-            context_parts.append(f"[Conocimiento relevante]\n{knowledge}")
+            context_parts.append(
+                f"(Detalle de fondo que puedes integrar en la narración: {knowledge})"
+            )
         if context_parts:
-            turn_input = "\n".join(context_parts) + "\n" + user_input
+            turn_input = "\n".join(context_parts) + "\n\n" + user_input
         else:
             turn_input = user_input
         with profiler.step("llm_call") as s:
             s.tag(model=self._engine.provider.model)
             response = self._engine.chat(turn_input)
-        return cast(str, response.text)
+        cleaned = _strip_echoed_context(cast(str, response.text))
+        if cleaned != response.text:
+            # Replace polluted history entry so the pattern doesn't propagate
+            history = self._engine.export_history()
+            if history and history[-1].get("role") == "assistant":
+                history[-1]["content"] = cleaned
+                self._engine.import_history(history)
+        return cleaned
 
     def reset(self) -> None:
         self._engine.clear_history()

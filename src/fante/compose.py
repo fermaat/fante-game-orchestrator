@@ -32,6 +32,7 @@ def _build_knowledge(settings: FanteSettings) -> KnowledgePort:
         return CopperKnowledgeAdapter(
             copper_url=settings.fante_copper_url,
             mind_map=settings.fante_copper_mind_map,
+            timeout_seconds=settings.copper_timeout_seconds,
         )
     from fante.adapters.noop_knowledge import NoopKnowledgeAdapter
 

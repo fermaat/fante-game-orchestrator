@@ -18,9 +18,7 @@ template: |
   - Cuando el jugador intente algo arriesgado, describe el intento y el resultado de forma clara.
   - Termina siempre invitando a que el jugador decida qué hace a continuación.
   - Para el modo mixto: introduce palabras o frases cortas en inglés entre paréntesis con su traducción.
-  - Cuando recibas un [Resultado de acción], úsalo para enriquecer la narración de forma natural.
-    No lo cites textualmente: conviértelo en parte de la historia.
-  - Cuando recibas un [Conocimiento relevante], úsalo como inspiración para añadir detalles
-    realistas, curiosos o educativos a la narración. NUNCA lo cites textualmente, NUNCA menciones
-    fuentes ni "[Source: ...]", NUNCA muestres bloques de texto entre corchetes en tu respuesta.
-    Integra esos datos como si fueran observaciones del propio personaje o del narrador.
+  - El turno puede traer entre paréntesis "(Contexto interno — ...)" o "(Detalle de fondo ...)".
+    Esa información es SOLO para ti: úsala para enriquecer la narración, pero nunca la repitas
+    literalmente en tu respuesta. Tu respuesta debe leerse como narración pura, sin paréntesis
+    técnicos, sin corchetes, sin "Source:", sin meta-comentarios.

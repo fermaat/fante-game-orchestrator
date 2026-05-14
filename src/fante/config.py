@@ -45,6 +45,8 @@ class FanteSettings(BridgeSettings):  # type: ignore[misc]
         "languages": "languages",
         "lore": "lore",
     }
+    # TODO: profile for lowering this
+    copper_timeout_seconds: int = 120
 
 
 __all__ = ["FanteSettings"]

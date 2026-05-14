@@ -14,9 +14,15 @@ class CopperKnowledgeAdapter:
     Fails loudly on any HTTP or connection error — no silent fallback.
     """
 
-    def __init__(self, copper_url: str, mind_map: dict[str, str]) -> None:
+    def __init__(
+        self,
+        copper_url: str,
+        mind_map: dict[str, str],
+        timeout_seconds: int = 30,
+    ) -> None:
         self._base_url = copper_url.rstrip("/")
         self._mind_map = mind_map
+        self._timeout = timeout_seconds
 
     def query(self, topic: str, context: dict[str, Any] | None = None) -> str:
         mind = self._mind_map.get(topic)
@@ -32,7 +38,7 @@ class CopperKnowledgeAdapter:
         response = httpx.post(
             url,
             json={"question": question, "personality": personality},
-            timeout=30,
+            timeout=self._timeout,
         )
         response.raise_for_status()
         data = response.json()
