@@ -128,9 +128,25 @@ class GameManager:
                 ):
                     try:
                         meta = self._rule_meta_provider.get_rule_meta(intent.rule_id)
+                        logger.debug(
+                            f"challenge.meta rule_id={meta.rule_id} "
+                            f"challenge={meta.challenge} "
+                            f"category={meta.challenge_category} "
+                            f"attribute={meta.attribute}"
+                        )
                         spec = self._challenge_selector.pick(meta, self._session_topic, profile)
-                        if spec is not None:
+                        if spec is None:
+                            logger.debug(
+                                f"challenge.pick rule_id={intent.rule_id} "
+                                f"session_topic={self._session_topic} -> None (skip)"
+                            )
+                        else:
+                            logger.debug(
+                                f"challenge.pick rule_id={intent.rule_id} -> spec.id={spec.id} "
+                                f"adapter={spec.adapter_id}"
+                            )
                             score = self._challenge.run(spec, user_input, profile)
+                            logger.debug(f"challenge.run spec.id={spec.id} -> score={score}")
                             if score > 0:
                                 player_score = score
                     except Exception:

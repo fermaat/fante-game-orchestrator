@@ -10,6 +10,7 @@ from typing import cast
 from core_llm_bridge import BridgeEngine
 from core_llm_bridge.core.base import BaseLLMProvider
 from core_llm_bridge.utils.prompt_manager import PromptManager
+from core_utils import logger
 from core_utils.profiler import profiler
 
 from fante.domain.profile import Language, PlayerProfile
@@ -140,6 +141,7 @@ class BridgeNarrator:
             turn_input = "\n".join(context_parts) + "\n\n" + user_input
         else:
             turn_input = user_input
+        logger.debug(f"narrator.turn_input (full):\n{turn_input}")
         with profiler.step("llm_call") as s:
             s.tag(model=self._engine.provider.model)
             response = self._engine.chat(turn_input)
