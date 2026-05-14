@@ -1,0 +1,11 @@
+id: math_quick
+adapter: math_quick
+categories: [mental, reflexes]
+attributes: [intellect, speed, awareness]
+topics: [math]
+min_age: 5
+max_age: 99
+prompt: "Resuelve rápido:"
+config:
+  operations: [add, subtract]
+  max_operand: 12

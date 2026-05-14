@@ -120,6 +120,39 @@ def build_game(
 
     knowledge = _build_knowledge(settings)
 
+    rule_meta_provider = None
+    challenge_selector = None
+    challenge = None
+    if settings.fante_challenge_enabled and settings.fante_rules_backend == "mcp":
+        from fante.adapters.color_naming_challenge import ColorNamingChallenge
+        from fante.adapters.llm_evaluator_challenge import LLMEvaluatorChallenge
+        from fante.adapters.math_quick_challenge import MathQuickChallenge
+        from fante.adapters.mcp_rules import MCPRulesAdapter
+        from fante.challenge.dispatcher import ChallengeDispatcher
+        from fante.challenge.registry import ChallengeRegistry
+        from fante.challenge.selector import ChallengeSelector
+
+        if isinstance(rules, MCPRulesAdapter):
+            rule_meta_provider = rules
+
+        registry = ChallengeRegistry.from_directory(settings.fante_challenge_definitions_path)
+        challenge_selector = ChallengeSelector(
+            registry=registry,
+            recent_history_size=settings.fante_challenge_recent_history,
+            optional_activation_prob=settings.fante_challenge_optional_prob,
+            topic_bias_weight=settings.fante_challenge_topic_bias,
+        )
+
+        adapters_in = StdinInput()
+        adapters_out = StdoutOutput()
+        challenge_adapters: dict[str, object] = {
+            "math_quick": MathQuickChallenge(adapters_in, adapters_out),
+            "color_naming": ColorNamingChallenge(adapters_in, adapters_out),
+        }
+        if evaluator is not None:
+            challenge_adapters["llm_evaluator"] = LLMEvaluatorChallenge(evaluator)
+        challenge = ChallengeDispatcher(adapters=challenge_adapters)  # type: ignore[arg-type]
+
     game = GameManager(
         narrator=narrator,
         input_port=StdinInput(),
@@ -131,6 +164,9 @@ def build_game(
         classifier=classifier,
         evaluator=evaluator,
         knowledge=knowledge,
+        rule_meta_provider=rule_meta_provider,
+        challenge_selector=challenge_selector,
+        challenge=challenge,
         session_topic=session_topic,
         default_mode=settings.fante_default_mode,
         command_handler=CommandHandler(

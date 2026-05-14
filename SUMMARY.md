@@ -43,24 +43,38 @@ src/fante/
     ├── noop_knowledge.py   # KnowledgePort — no-op (default when copper disabled)
     ├── copper_knowledge.py # KnowledgePort — HTTP client for copper /minds/{mind}/tap
     ├── local_dice.py       # RulesPort — SystemRandom (offline/test fallback)
-    ├── mcp_rules.py        # RulesPort — MCPRulesAdapter (Phase 2.A)
+    ├── mcp_rules.py        # RulesPort + RuleMetaProvider — MCPRulesAdapter (Phase 2.A)
+    ├── automatic_challenge.py        # ChallengePort — no-op, falls back to dice
+    ├── llm_evaluator_challenge.py    # ChallengePort — wraps LLMPerformanceEvaluator
+    ├── math_quick_challenge.py       # ChallengePort — quick arithmetic minigame
+    ├── color_naming_challenge.py     # ChallengePort — say-a-color minigame
     ├── json_session_store.py  # SessionStore — ~/.fante/session.json
     ├── stdio_io.py         # StdinInput, StdoutOutput
     └── json_profile_store.py  # v1→v2 migration aware
+
+challenge/                  # Phase 2.E
+    ├── registry.py         # YAML loader for data/challenges/*.yaml
+    ├── selector.py         # Picks minigame: category/attribute/age filter + topic bias + recent-N
+    └── dispatcher.py       # Routes ChallengeSpec → concrete adapter
 
 domain/
     ├── actor.py            # Actor, profile_to_actor
     ├── turn.py             # ActionIntent
     ├── rules.py            # RollResult, CheckResult, AppliedModifier, PlotDieFace
+    ├── challenge.py        # RuleMeta, ChallengeSpec, ChallengeKind, ChallengeCategory
     └── events.py           # + ActionClassified, CheckResolved
 
 data/
 ├── player_profile.json     # Fante's character sheet (schema_version 2)
-└── copper_minds/           # Source content for copper knowledge minds
-    ├── adventure/raw/lore.md
-    ├── math/raw/curriculum.md
-    ├── languages/raw/vocab.md
-    └── lore/raw/world_lore.md
+├── copper_minds/           # Source content for copper knowledge minds
+│   ├── adventure/raw/lore.md
+│   ├── math/raw/curriculum.md
+│   ├── languages/raw/vocab.md
+│   └── lore/raw/world_lore.md
+└── challenges/             # Minigame definitions (Phase 2.E)
+    ├── math_quick.yaml
+    ├── color_naming.yaml
+    └── verbose_attempt.yaml
 
 scripts/
 └── setup_copper_minds.sh   # Bootstrap: forge + ingest the four copper minds
@@ -149,6 +163,11 @@ Inherits all bridge env vars (`OLLAMA_*`, `ANTHROPIC_*`, `OPENAI_*`, `LOG_*`).
 | `FANTE_COPPER_ENABLED` | `false` | Enable copper knowledge integration |
 | `FANTE_COPPER_URL` | `http://127.0.0.1:8000` | Copper server base URL |
 | `FANTE_COPPER_MIND_MAP` | `{adventure,math,languages,lore}` | JSON mapping topic→mind name |
+| `FANTE_CHALLENGE_ENABLED` | `false` | Enable minigame system before checks |
+| `FANTE_CHALLENGE_DEFINITIONS_PATH` | `data/challenges` | Directory of minigame YAMLs |
+| `FANTE_CHALLENGE_OPTIONAL_PROB` | `0.5` | Activation probability for `challenge: optional` rules |
+| `FANTE_CHALLENGE_TOPIC_BIAS` | `2.0` | Weight multiplier when session_topic matches |
+| `FANTE_CHALLENGE_RECENT_HISTORY` | `3` | Sliding window of recent picks to exclude |
 
 ## Dependencies
 
@@ -179,6 +198,7 @@ pdm run pytest -m integration -v   # opt-in, requires Ollama running
 - **Phase 2.B ✓** — `ActionClassifier` + `LLMPerformanceEvaluator` + turn lifecycle (classify→eval→check→narrate), modo dice/skill (`/dice` `/skill`), `KnowledgePort` + `NoopKnowledgeAdapter` stub, `ActionClassified`/`CheckResolved` events. 82 tests pass.
 - **Phase 2.C ✓** — `CopperKnowledgeAdapter` (HTTP client for copper `/minds/{mind}/tap`), `NarratorPort.respond` + `BridgeNarrator` extended with `knowledge` param, `GameManager` queries knowledge when topic is set, 4 copper minds (adventure/math/languages/lore) with sample content. `scripts/setup_copper_minds.sh` for bootstrapping.
 - **Phase 2.D ✓** — Knowledge topic routing moved to rules engine (`CheckResult.knowledge_topic` from pack YAML) + session-level override (`--topic` CLI flag, `/topic` slash command, `GameManager.session_topic`). 87 tests pass.
+- **Phase 2.E ✓** — Challenge / minigame system. New ports `RuleMetaProvider`, `ChallengeSelectorPort`, `ChallengePort`. `ChallengeRegistry` loads `data/challenges/*.yaml`; `ChallengeSelector` filters by category/attribute/age, applies session-topic bias and recent-N exclusion. `ChallengeDispatcher` routes by `adapter_id`. Adapters: `AutomaticChallenge`, `LLMEvaluatorChallenge`, `MathQuickChallenge`, `ColorNamingChallenge`. Requires engine `get_rule_meta` MCP tool (Phase 2.E.1 in `fante-mcp-game-rules`). 107 tests pass.
 - **Phase 3** — `speech-io-hub` repo → Whisper input + TTS output. Async at the orchestrator seam.
 - **Phase 4** — `world-engine-godot` repo → WebSocket `WorldPort`.
 
@@ -191,3 +211,4 @@ pdm run pytest -m integration -v   # opt-in, requires Ollama running
 - Architecture is intentionally generic; the `fante` package name is the project label,
   not a domain coupling. Class names are neutral (`GameManager`, `NarratorAgent`, …).
 - Single-machine assumption: localhost services, JSON files, no auth.
+- Deferred decisions / known debt tracked in [TECH_DEBT.md](TECH_DEBT.md).

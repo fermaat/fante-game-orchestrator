@@ -1,0 +1,9 @@
+id: verbose_attempt
+adapter: llm_evaluator
+categories: [physical, mental, reflexes, language, memory]
+attributes: []
+topics: []
+min_age: 0
+max_age: 999
+prompt: ""
+config: {}

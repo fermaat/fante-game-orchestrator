@@ -216,6 +216,109 @@ def test_session_topic_used_when_rule_has_no_topic(make_game) -> None:  # type: 
     assert narrator.received_knowledge == ["Física: fricción en superficies mojadas."]
 
 
+class FakeRuleMetaProvider:
+    def __init__(self, meta) -> None:  # type: ignore[no-untyped-def]
+        self._meta = meta
+        self.calls: list[str] = []
+
+    def get_rule_meta(self, rule_id: str):  # type: ignore[no-untyped-def]
+        self.calls.append(rule_id)
+        return self._meta
+
+
+class FakeChallengeSelector:
+    def __init__(self, spec) -> None:  # type: ignore[no-untyped-def]
+        self._spec = spec
+        self.calls: list = []  # type: ignore[type-arg]
+
+    def pick(self, meta, topic, profile):
+        self.calls.append((meta.rule_id, topic))
+        return self._spec
+
+
+class FakeChallengeRunner:
+    def __init__(self, score: int) -> None:
+        self._score = score
+        self.calls: list = []  # type: ignore[type-arg]
+
+    def run(self, spec, user_input, profile) -> int:  # type: ignore[no-untyped-def]
+        self.calls.append((spec.id, user_input))
+        return self._score
+
+
+@pytest.mark.functional
+def test_challenge_phase_injects_player_score(make_game) -> None:  # type: ignore[no-untyped-def]
+    from tests.conftest import FakeRulesPort
+
+    from fante.domain.challenge import ChallengeSpec, RuleMeta
+
+    rules = FakeRulesPort()
+    rules.set_check_result(_make_check_result())
+    clf = FakeClassifier(intent=ActionIntent(rule_id="climb"))
+    meta = RuleMeta(
+        rule_id="climb",
+        pack_name="physics_basic",
+        attribute="strength",
+        skill=None,
+        base_difficulty=10,
+        knowledge_topic=None,
+        challenge="required",
+        challenge_category="physical",
+    )
+    spec = ChallengeSpec(id="x", adapter_id="x", prompt="prompt", category="physical", metadata={})
+    runner = FakeChallengeRunner(score=15)
+
+    game, _, _, _ = make_game(
+        narrator_responses=["narración"],
+        input_lines=["trepo", None],
+    )
+    game._classifier = clf
+    game._rules = rules
+    game._rule_meta_provider = FakeRuleMetaProvider(meta)
+    game._challenge_selector = FakeChallengeSelector(spec)
+    game._challenge = runner
+    game.run()
+
+    assert runner.calls == [("x", "trepo")]
+
+
+@pytest.mark.functional
+def test_challenge_selector_none_falls_back_to_evaluator(make_game) -> None:  # type: ignore[no-untyped-def]
+    from tests.conftest import FakeRulesPort
+
+    from fante.domain.challenge import RuleMeta
+
+    rules = FakeRulesPort()
+    rules.set_check_result(_make_check_result())
+    clf = FakeClassifier(intent=ActionIntent(rule_id="climb"))
+    meta = RuleMeta(
+        rule_id="climb",
+        pack_name="physics_basic",
+        attribute="strength",
+        skill=None,
+        base_difficulty=10,
+        knowledge_topic=None,
+        challenge="optional",
+        challenge_category="physical",
+    )
+    ev = FakeEvaluator(score=12)
+
+    game, _, _, _ = make_game(
+        narrator_responses=["narración"],
+        input_lines=["trepo", None],
+    )
+    game._classifier = clf
+    game._rules = rules
+    game._rule_meta_provider = FakeRuleMetaProvider(meta)
+    game._challenge_selector = FakeChallengeSelector(None)
+    game._challenge = FakeChallengeRunner(score=99)  # never called
+    game._evaluator = ev
+    game._mode = "skill"
+    game.run()
+
+    assert len(ev.calls) == 1
+
+
 @pytest.mark.functional
 def test_no_topic_anywhere_skips_knowledge_adapter(make_game) -> None:  # type: ignore[no-untyped-def]
     from tests.conftest import FakeRulesPort

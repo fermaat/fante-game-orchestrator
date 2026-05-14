@@ -1,0 +1,18 @@
+id: color_naming
+adapter: color_naming
+categories: [physical, language]
+attributes: [awareness, presence, strength]
+topics: [adventure, languages]
+min_age: 3
+max_age: 9
+prompt: "Antes de actuar, dime:"
+config:
+  pool:
+    - prompt: "¿De qué color es la madera mojada?"
+      accepted: [marrón, marron, café, cafe, oscuro, negro]
+    - prompt: "¿De qué color es el cielo de noche?"
+      accepted: [negro, "azul oscuro", oscuro]
+    - prompt: "¿De qué color son las hojas en verano?"
+      accepted: [verde, "verde claro", "verde oscuro"]
+    - prompt: "¿De qué color es la nieve?"
+      accepted: [blanco, "blanco brillante"]

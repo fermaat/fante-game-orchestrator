@@ -48,5 +48,11 @@ class FanteSettings(BridgeSettings):  # type: ignore[misc]
     # TODO: profile for lowering this
     copper_timeout_seconds: int = 120
 
+    fante_challenge_enabled: bool = False
+    fante_challenge_definitions_path: Path = Path("data/challenges")
+    fante_challenge_optional_prob: float = 0.5
+    fante_challenge_topic_bias: float = 2.0
+    fante_challenge_recent_history: int = 3
+
 
 __all__ = ["FanteSettings"]

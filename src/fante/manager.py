@@ -23,8 +23,11 @@ from fante.events.bus import EventBus
 from fante.ports import InputPort, NarratorPort, OutputPort, ProfileStore, RulesPort, SessionStore
 
 if TYPE_CHECKING:
+    from fante.ports.challenge import ChallengePort
+    from fante.ports.challenge_selector import ChallengeSelectorPort
     from fante.ports.evaluator import PerformanceEvaluatorPort
     from fante.ports.knowledge import KnowledgePort
+    from fante.ports.rule_meta import RuleMetaProvider
     from fante.turn.classifier import ActionClassifier
 
 Mode = Literal["dice", "skill"]
@@ -48,6 +51,9 @@ class GameManager:
         classifier: "ActionClassifier | None" = None,
         evaluator: "PerformanceEvaluatorPort | None" = None,
         knowledge: "KnowledgePort | None" = None,
+        rule_meta_provider: "RuleMetaProvider | None" = None,
+        challenge_selector: "ChallengeSelectorPort | None" = None,
+        challenge: "ChallengePort | None" = None,
         session_topic: str | None = None,
         default_mode: Mode = "skill",
     ) -> None:
@@ -62,6 +68,9 @@ class GameManager:
         self._classifier = classifier
         self._evaluator = evaluator
         self._knowledge = knowledge
+        self._rule_meta_provider = rule_meta_provider
+        self._challenge_selector = challenge_selector
+        self._challenge = challenge
         self._session_topic = session_topic
         self._mode: Mode = default_mode
         self._turn_index = 0
@@ -109,7 +118,26 @@ class GameManager:
             if intent is not None:
                 self._bus.publish(ActionClassified(turn_index=idx, intent=intent))
                 player_score: int | None = None
-                if self._mode == "skill" and self._evaluator is not None:
+
+                # Challenge phase: if all three pieces are wired, ask the selector
+                # whether a minigame applies and run it for a score.
+                if (
+                    self._rule_meta_provider is not None
+                    and self._challenge_selector is not None
+                    and self._challenge is not None
+                ):
+                    try:
+                        meta = self._rule_meta_provider.get_rule_meta(intent.rule_id)
+                        spec = self._challenge_selector.pick(meta, self._session_topic, profile)
+                        if spec is not None:
+                            score = self._challenge.run(spec, user_input, profile)
+                            if score > 0:
+                                player_score = score
+                    except Exception:
+                        logger.exception(f"challenge phase failed for rule_id={intent.rule_id}")
+
+                # Skill-mode evaluator fallback when no challenge produced a score.
+                if player_score is None and self._mode == "skill" and self._evaluator is not None:
                     player_score = self._evaluator.score(
                         user_input, profile, intent.context or None
                     )

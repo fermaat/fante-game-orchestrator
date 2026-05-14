@@ -34,3 +34,4 @@ class PlayerProfile(BaseModel):
     tags: list[str] = Field(default_factory=list)
     language: Language = "es"
     seed_prompt: str | None = None
+    age: int | None = None

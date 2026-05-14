@@ -16,6 +16,7 @@ from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
 from fante.domain.actor import Actor
+from fante.domain.challenge import RuleMeta
 from fante.domain.rules import CheckResult, RollResult
 
 _log = logging.getLogger(__name__)
@@ -119,3 +120,20 @@ class MCPRulesAdapter:
             raise RuntimeError(f"MCP check failed for rule '{rule_id}': {content}")
         data: dict[str, Any] = result.structuredContent or {}
         return CheckResult.model_validate(data)
+
+    def get_rule_meta(self, rule_id: str) -> RuleMeta:
+        result = self._call_tool("get_rule_meta", {"rule_id": rule_id})
+        if result.isError:
+            content = result.content[0].text if result.content else "unknown error"
+            raise RuntimeError(f"MCP get_rule_meta failed for rule '{rule_id}': {content}")
+        data: dict[str, Any] = result.structuredContent or {}
+        return RuleMeta(
+            rule_id=data["rule_id"],
+            pack_name=data["pack_name"],
+            attribute=data.get("attribute"),
+            skill=data.get("skill"),
+            base_difficulty=data["base_difficulty"],
+            knowledge_topic=data.get("knowledge_topic"),
+            challenge=data.get("challenge", "none"),
+            challenge_category=data.get("challenge_category"),
+        )
