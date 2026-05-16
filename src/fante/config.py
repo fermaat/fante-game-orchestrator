@@ -54,5 +54,10 @@ class FanteSettings(BridgeSettings):  # type: ignore[misc]
     fante_challenge_topic_bias: float = 2.0
     fante_challenge_recent_history: int = 3
 
+    fante_audio_enabled: bool = False
+    fante_speech_url: str = "http://127.0.0.1:8500"
+    fante_speech_vocabulary_path: Path = Path("data/speech_vocabulary.yaml")
+    fante_tts_voice: str = ""  # empty → server default
+
 
 __all__ = ["FanteSettings"]

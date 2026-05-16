@@ -1,0 +1,185 @@
+# Vocabulary used as Whisper `initial_prompt` to bias transcription toward
+# game-relevant words. Especially important for a young child whose
+# pronunciation diverges from Whisper's training distribution.
+#
+# Words are grouped by category for human readability; categories are
+# concatenated transparently when building the prompt.
+#
+# To grow the vocabulary, append words to the relevant section. No code
+# changes needed (see CONTENT_GUIDE.md).
+
+es:
+  actions:
+    - trepar
+    - escalar
+    - saltar
+    - correr
+    - nadar
+    - andar
+    - mirar
+    - esconderse
+    - esquivar
+    - empujar
+    - tirar
+    - coger
+    - soltar
+    - abrir
+    - cerrar
+    - comer
+    - beber
+    - dormir
+    - hablar
+    - cantar
+    - bailar
+    - luchar
+    - ayudar
+    - buscar
+    - encontrar
+  objects:
+    - elefante
+    - dragón
+    - monstruo
+    - muro
+    - árbol
+    - río
+    - cueva
+    - cofre
+    - llave
+    - espada
+    - escudo
+    - comida
+    - agua
+    - fuego
+    - amigo
+    - mamá
+    - papá
+    - pelota
+    - libro
+    - cuerda
+    - puerta
+    - ventana
+  qualities:
+    - mojado
+    - seco
+    - grande
+    - pequeño
+    - rápido
+    - lento
+    - alto
+    - bajo
+    - fuerte
+    - oscuro
+    - brillante
+    - bonito
+    - frío
+    - caliente
+  responses:
+    - sí
+    - no
+    - vale
+    - hola
+    - adiós
+    - "otra vez"
+    - más
+    - basta
+    - ayuda
+    - "por favor"
+    - gracias
+  numbers:
+    - uno
+    - dos
+    - tres
+    - cuatro
+    - cinco
+    - seis
+    - siete
+    - ocho
+    - nueve
+    - diez
+
+en:
+  actions:
+    - climb
+    - jump
+    - run
+    - swim
+    - walk
+    - look
+    - hide
+    - dodge
+    - push
+    - pull
+    - take
+    - drop
+    - open
+    - close
+    - eat
+    - drink
+    - sleep
+    - speak
+    - sing
+    - dance
+    - fight
+    - help
+    - search
+    - find
+  objects:
+    - elephant
+    - dragon
+    - monster
+    - wall
+    - tree
+    - river
+    - cave
+    - chest
+    - key
+    - sword
+    - shield
+    - food
+    - water
+    - fire
+    - friend
+    - mom
+    - dad
+    - ball
+    - book
+    - rope
+    - door
+    - window
+  qualities:
+    - wet
+    - dry
+    - big
+    - small
+    - fast
+    - slow
+    - high
+    - low
+    - strong
+    - dark
+    - bright
+    - cold
+    - hot
+  responses:
+    - yes
+    - no
+    - okay
+    - hi
+    - bye
+    - again
+    - more
+    - stop
+    - help
+    - please
+    - thanks
+  numbers:
+    - one
+    - two
+    - three
+    - four
+    - five
+    - six
+    - seven
+    - eight
+    - nine
+    - ten

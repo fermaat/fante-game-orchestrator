@@ -23,6 +23,7 @@ from fante.events.dad_monitor import install_dad_monitor
 from fante.events.subscribers import install_logging_subscriber
 from fante.manager import GameManager
 from fante.ports import RulesPort
+from fante.ports.io import InputPort, OutputPort
 
 
 def _build_knowledge(settings: FanteSettings) -> KnowledgePort:
@@ -153,10 +154,47 @@ def build_game(
             challenge_adapters["llm_evaluator"] = LLMEvaluatorChallenge(evaluator)
         challenge = ChallengeDispatcher(adapters=challenge_adapters)  # type: ignore[arg-type]
 
+    input_port: InputPort
+    output_port: OutputPort
+
+    if settings.fante_audio_enabled:
+        from speech_io_hub.client.client import SpeechClient
+
+        from fante.adapters.tts_output import TTSOutput
+        from fante.adapters.whisper_input import WhisperInput
+        from fante.speech.vocabulary import load_vocabulary
+
+        speech_client = SpeechClient(base_url=settings.fante_speech_url)
+        initial_prompt = (
+            load_vocabulary(
+                settings.fante_speech_vocabulary_path,
+                language=profile.language,
+            )
+            or None
+        )
+        # Whisper accepts "es" or "en" but not "mixed"; force "es" as the primary
+        # transcription language for mixed-mode profiles. The vocabulary still
+        # carries both Spanish and English words so the bias works in either.
+        stt_language = profile.language if profile.language in ("es", "en") else "es"
+
+        input_port = WhisperInput(
+            client=speech_client,
+            language=stt_language,
+            initial_prompt=initial_prompt,
+        )
+        output_port = TTSOutput(
+            client=speech_client,
+            echo_to_stdout=True,
+            voice=settings.fante_tts_voice or None,
+        )
+    else:
+        input_port = StdinInput()
+        output_port = StdoutOutput()
+
     game = GameManager(
         narrator=narrator,
-        input_port=StdinInput(),
-        output_port=StdoutOutput(),
+        input_port=input_port,
+        output_port=output_port,
         profile_store=profile_store,
         bus=bus,
         session_store=session_store,

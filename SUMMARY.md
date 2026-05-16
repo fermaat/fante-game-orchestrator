@@ -50,6 +50,8 @@ src/fante/
     ├── color_naming_challenge.py     # ChallengePort — say-a-color minigame
     ├── json_session_store.py  # SessionStore — ~/.fante/session.json
     ├── stdio_io.py         # StdinInput, StdoutOutput
+    ├── whisper_input.py    # InputPort — VAD recording + Whisper STT (Phase 3.3)
+    ├── tts_output.py       # OutputPort — TTS synthesis + play via speech-io-hub (Phase 3.3)
     └── json_profile_store.py  # v1→v2 migration aware
 
 challenge/                  # Phase 2.E
@@ -168,10 +170,14 @@ Inherits all bridge env vars (`OLLAMA_*`, `ANTHROPIC_*`, `OPENAI_*`, `LOG_*`).
 | `FANTE_CHALLENGE_OPTIONAL_PROB` | `0.5` | Activation probability for `challenge: optional` rules |
 | `FANTE_CHALLENGE_TOPIC_BIAS` | `2.0` | Weight multiplier when session_topic matches |
 | `FANTE_CHALLENGE_RECENT_HISTORY` | `3` | Sliding window of recent picks to exclude |
+| `FANTE_AUDIO_ENABLED` | `false` | Enable voice mode (WhisperInput + TTSOutput) |
+| `FANTE_SPEECH_URL` | `http://127.0.0.1:8500` | core-speech-io-hub service base URL |
+| `FANTE_SPEECH_VOCABULARY_PATH` | `data/speech_vocabulary.yaml` | Whisper biasing vocabulary |
+| `FANTE_TTS_VOICE` | `""` | TTS voice id (empty → server default) |
 
 ## Dependencies
 
-- Runtime: `core-utils`, `core-llm-bridge`, `pyyaml`
+- Runtime: `core-utils`, `core-llm-bridge`, `core-speech-io-hub`, `pyyaml`
 - Dev: pytest, pytest-cov, black, mypy, ruff, isort
 
 ## Testing
@@ -199,8 +205,15 @@ pdm run pytest -m integration -v   # opt-in, requires Ollama running
 - **Phase 2.C ✓** — `CopperKnowledgeAdapter` (HTTP client for copper `/minds/{mind}/tap`), `NarratorPort.respond` + `BridgeNarrator` extended with `knowledge` param, `GameManager` queries knowledge when topic is set, 4 copper minds (adventure/math/languages/lore) with sample content. `scripts/setup_copper_minds.sh` for bootstrapping.
 - **Phase 2.D ✓** — Knowledge topic routing moved to rules engine (`CheckResult.knowledge_topic` from pack YAML) + session-level override (`--topic` CLI flag, `/topic` slash command, `GameManager.session_topic`). 87 tests pass.
 - **Phase 2.E ✓** — Challenge / minigame system. New ports `RuleMetaProvider`, `ChallengeSelectorPort`, `ChallengePort`. `ChallengeRegistry` loads `data/challenges/*.yaml`; `ChallengeSelector` filters by category/attribute/age, applies session-topic bias and recent-N exclusion. `ChallengeDispatcher` routes by `adapter_id`. Adapters: `AutomaticChallenge`, `LLMEvaluatorChallenge`, `MathQuickChallenge`, `ColorNamingChallenge`. Requires engine `get_rule_meta` MCP tool (Phase 2.E.1 in `fante-mcp-game-rules`). 107 tests pass.
-- **Phase 3** — `speech-io-hub` repo → Whisper input + TTS output. Async at the orchestrator seam.
-- **Phase 4** — `world-engine-godot` repo → WebSocket `WorldPort`.
+- **Phase 3.3 ✓** — Audio adapters: `WhisperInput` (VAD + Whisper via `core-speech-io-hub`) and `TTSOutput` (Piper/`say` TTS). `data/speech_vocabulary.yaml` loaded at startup for Whisper biasing. `FANTE_AUDIO_ENABLED` env var switches mode at startup (no live toggle). Text still echoed to stdout in audio mode for the parent. `core-speech-io-hub` git dep added. 117 tests pass.
+- **Phase 3.5** — Character progression: XP, level, level-based check influences. Updates `PlayerProfile` schema.
+- **Phase 3.6** — Challenge system depth (tracked via `TD-CH-*` items folded in below):
+    - **3.6.1** Cooldown by category (extend recent-history to track categories, not just IDs).
+    - **3.6.2** Adaptive difficulty (tune `max_operand`, `time_limit` based on per-player success history; requires a success-stats store).
+    - **3.6.3** Minigame DSL (declarative authoring in YAML for common patterns: Q&A, parametric math, multi-question, LLM-judged, choice; no Python adapter required for these kinds).
+    - **3.6.4** Multi-turn challenges (cross-turn state; e.g. "say your name across three turns"). Builds on the DSL.
+- **Phase 4** — `world-engine-godot` repo → WebSocket `WorldPort`. Sibling repo.
+- **Future** — Multi-character / multi-session support (today the system assumes a single `player_profile.json` and one `session.json`). Telemetry-grade persistence for post-session analysis. Not on the active roadmap.
 
 ## Consumers / upstream
 

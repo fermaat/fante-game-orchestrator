@@ -232,3 +232,49 @@ def tmp_profile_path(tmp_path: Path, sample_profile: PlayerProfile) -> Path:
     path = tmp_path / "player_profile.json"
     path.write_text(sample_profile.model_dump_json(indent=2), encoding="utf-8")
     return path
+
+
+# ---------- Speech fakes ---------------------------------------------------
+
+
+class MockSpeechClient:
+    """Port-level fake for the speech-io-hub HTTP client used by audio adapters."""
+
+    def __init__(
+        self,
+        transcripts: list[str] | None = None,
+        audio_bytes: bytes = b"RIFF\x24\x00\x00\x00mock-wav",
+    ) -> None:
+        self._transcripts = list(transcripts or [])
+        self._audio = audio_bytes
+        self.transcribe_calls: list[dict[str, object]] = []
+        self.synthesize_calls: list[dict[str, object]] = []
+        self.say_calls: list[dict[str, object]] = []
+
+    def health(self) -> bool:
+        return True
+
+    def transcribe(
+        self,
+        audio: bytes,
+        language: str | None = None,
+        initial_prompt: str | None = None,
+        model: str | None = None,
+    ) -> dict[str, object]:
+        self.transcribe_calls.append(
+            {
+                "audio_size": len(audio),
+                "language": language,
+                "initial_prompt": initial_prompt,
+                "model": model,
+            }
+        )
+        text = self._transcripts.pop(0) if self._transcripts else ""
+        return {"text": text, "language": language or "es", "confidence": 1.0}
+
+    def synthesize(self, text: str, voice: str | None = None) -> bytes:
+        self.synthesize_calls.append({"text": text, "voice": voice})
+        return self._audio
+
+    def say(self, text: str, voice: str | None = None) -> None:
+        self.say_calls.append({"text": text, "voice": voice})
