@@ -115,7 +115,12 @@ class GameManager:
             profile = self._profile_store.load()
             intent = self._classifier.classify(user_input, profile.name)
 
-            if intent is not None:
+            if intent is None:
+                logger.debug(
+                    f"classifier returned None for user_input={user_input!r} "
+                    "— treating as conversation (skipping check)"
+                )
+            else:
                 self._bus.publish(ActionClassified(turn_index=idx, intent=intent))
                 player_score: int | None = None
 

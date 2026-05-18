@@ -59,5 +59,7 @@ class FanteSettings(BridgeSettings):  # type: ignore[misc]
     fante_speech_vocabulary_path: Path = Path("data/speech_vocabulary.yaml")
     fante_tts_voice: str = ""  # empty → server default
 
+    fante_narration_style: Literal["concise", "balanced", "rich"] = "concise"
+
 
 __all__ = ["FanteSettings"]

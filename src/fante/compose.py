@@ -76,6 +76,7 @@ def build_game(
         profile=profile,
         max_history_length=settings.max_history_length,
         prompt_path=settings.narrator_prompt_path,
+        style=settings.fante_narration_style,
     )
 
     if reset:
@@ -121,39 +122,9 @@ def build_game(
 
     knowledge = _build_knowledge(settings)
 
-    rule_meta_provider = None
-    challenge_selector = None
-    challenge = None
-    if settings.fante_challenge_enabled and settings.fante_rules_backend == "mcp":
-        from fante.adapters.color_naming_challenge import ColorNamingChallenge
-        from fante.adapters.llm_evaluator_challenge import LLMEvaluatorChallenge
-        from fante.adapters.math_quick_challenge import MathQuickChallenge
-        from fante.adapters.mcp_rules import MCPRulesAdapter
-        from fante.challenge.dispatcher import ChallengeDispatcher
-        from fante.challenge.registry import ChallengeRegistry
-        from fante.challenge.selector import ChallengeSelector
-
-        if isinstance(rules, MCPRulesAdapter):
-            rule_meta_provider = rules
-
-        registry = ChallengeRegistry.from_directory(settings.fante_challenge_definitions_path)
-        challenge_selector = ChallengeSelector(
-            registry=registry,
-            recent_history_size=settings.fante_challenge_recent_history,
-            optional_activation_prob=settings.fante_challenge_optional_prob,
-            topic_bias_weight=settings.fante_challenge_topic_bias,
-        )
-
-        adapters_in = StdinInput()
-        adapters_out = StdoutOutput()
-        challenge_adapters: dict[str, object] = {
-            "math_quick": MathQuickChallenge(adapters_in, adapters_out),
-            "color_naming": ColorNamingChallenge(adapters_in, adapters_out),
-        }
-        if evaluator is not None:
-            challenge_adapters["llm_evaluator"] = LLMEvaluatorChallenge(evaluator)
-        challenge = ChallengeDispatcher(adapters=challenge_adapters)  # type: ignore[arg-type]
-
+    # I/O ports are selected first so the challenge adapters can share them
+    # (otherwise interactive minigames would always read stdin and print to
+    # stdout even in audio mode).
     input_port: InputPort
     output_port: OutputPort
 
@@ -190,6 +161,39 @@ def build_game(
     else:
         input_port = StdinInput()
         output_port = StdoutOutput()
+
+    rule_meta_provider = None
+    challenge_selector = None
+    challenge = None
+    if settings.fante_challenge_enabled and settings.fante_rules_backend == "mcp":
+        from fante.adapters.color_naming_challenge import ColorNamingChallenge
+        from fante.adapters.llm_evaluator_challenge import LLMEvaluatorChallenge
+        from fante.adapters.math_quick_challenge import MathQuickChallenge
+        from fante.adapters.mcp_rules import MCPRulesAdapter
+        from fante.challenge.dispatcher import ChallengeDispatcher
+        from fante.challenge.registry import ChallengeRegistry
+        from fante.challenge.selector import ChallengeSelector
+
+        if isinstance(rules, MCPRulesAdapter):
+            rule_meta_provider = rules
+
+        registry = ChallengeRegistry.from_directory(settings.fante_challenge_definitions_path)
+        challenge_selector = ChallengeSelector(
+            registry=registry,
+            recent_history_size=settings.fante_challenge_recent_history,
+            optional_activation_prob=settings.fante_challenge_optional_prob,
+            topic_bias_weight=settings.fante_challenge_topic_bias,
+        )
+
+        # Share the same I/O ports as the rest of the game so interactive
+        # minigames are voice-driven in audio mode and keyboard-driven in text mode.
+        challenge_adapters: dict[str, object] = {
+            "math_quick": MathQuickChallenge(input_port, output_port),
+            "color_naming": ColorNamingChallenge(input_port, output_port),
+        }
+        if evaluator is not None:
+            challenge_adapters["llm_evaluator"] = LLMEvaluatorChallenge(evaluator)
+        challenge = ChallengeDispatcher(adapters=challenge_adapters)  # type: ignore[arg-type]
 
     game = GameManager(
         narrator=narrator,

@@ -5,7 +5,7 @@ Falls back to the inline template if the file is missing.
 """
 
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 from core_llm_bridge import BridgeEngine
 from core_llm_bridge.core.base import BaseLLMProvider
@@ -15,6 +15,8 @@ from core_utils.profiler import profiler
 
 from fante.domain.profile import Language, PlayerProfile
 from fante.domain.rules import CheckResult
+
+NarrationStyle = Literal["concise", "balanced", "rich"]
 
 _DEFAULT_PROMPT_PATH = Path("prompts/narrator.yaml")
 
@@ -29,14 +31,12 @@ Sobre el personaje:
 Idioma de la narración: $language_instruction
 
 Reglas del narrador:
-- IMPORTANTE: El protagonista se llama exactamente «$name». Nunca uses otro nombre ni lo sustituyas por ningún otro.
+- IMPORTANTE: El protagonista se llama exactamente «$name». Nunca uses otro nombre.
 - Háblale en segunda persona ("tú haces", "ves", "intentas").
-- Mantén la coherencia entre turnos: recuerda lo que ya ha pasado en la aventura.
-- Tono vivo y divertido, apto para una persona joven. Nada que dé miedo.
-- Párrafos cortos: máximo 3-4 frases por respuesta. Una imagen vívida por turno.
-- Cuando el jugador intente algo arriesgado, describe el intento y el resultado de forma clara.
+- Tono vivo y cálido, apto para una persona joven. Nada que dé miedo.
+- Mantén la coherencia entre turnos: recuerda lo que ya ha pasado.
 - Termina siempre invitando a que el jugador decida qué hace a continuación.
-- Para el modo mixto: introduce palabras o frases cortas en inglés entre paréntesis con su traducción.
+- Estilo de la narración: $style_instruction
 - El turno puede traer entre paréntesis "(Contexto interno — ...)" o "(Detalle de fondo ...)".
   Esa información es SOLO para ti: úsala para enriquecer la narración, pero nunca la repitas
   literalmente en tu respuesta. Tu respuesta debe leerse como narración pura, sin paréntesis
@@ -52,10 +52,30 @@ _LANGUAGE_INSTRUCTION: dict[Language, str] = {
     ),
 }
 
+_STYLE_INSTRUCTION: dict[NarrationStyle, str] = {
+    "concise": (
+        "Sé MUY breve. Máximo 2 frases cortas por respuesta. "
+        "Una imagen y una pregunta. Vocabulario simple, presente, frases directas. "
+        "Nada de descripciones largas, ni listas, ni adverbios encadenados. "
+        "Si te apetece añadir más detalle, resiste — es mejor breve."
+    ),
+    "balanced": (
+        "Párrafos cortos: máximo 3-4 frases por respuesta. Una imagen vívida por turno. "
+        "Cuando el jugador haga algo arriesgado, describe el intento y el resultado de "
+        "forma clara, sin extenderte."
+    ),
+    "rich": (
+        "Hasta 5-6 frases por respuesta. Puedes incluir detalles sensoriales "
+        "(sonidos, olores, texturas) y una imagen central por turno. "
+        "Tono evocador pero sin perderte en digresiones."
+    ),
+}
+
 
 def _build_system_prompt(
     profile: PlayerProfile,
     prompt_path: Path | None = _DEFAULT_PROMPT_PATH,
+    style: NarrationStyle = "concise",
 ) -> str:
     prompts = PromptManager()
     if prompt_path is not None and prompt_path.exists():
@@ -74,6 +94,7 @@ def _build_system_prompt(
             )
             or "(sin atributos)",
             language_instruction=_LANGUAGE_INSTRUCTION[profile.language],
+            style_instruction=_STYLE_INSTRUCTION[style],
         ),
     )
 
@@ -116,8 +137,9 @@ class BridgeNarrator:
         profile: PlayerProfile,
         max_history_length: int = 30,
         prompt_path: Path | None = _DEFAULT_PROMPT_PATH,
+        style: NarrationStyle = "concise",
     ) -> None:
-        system_prompt = _build_system_prompt(profile, prompt_path)
+        system_prompt = _build_system_prompt(profile, prompt_path, style=style)
         self._engine = BridgeEngine(
             provider=provider,
             system_prompt=system_prompt,

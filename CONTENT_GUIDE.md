@@ -286,7 +286,7 @@ Three YAML prompts live in `prompts/`:
 
 | File | What it shapes |
 |---|---|
-| `narrator.yaml` | Voice, length, language rules, how internal context is consumed |
+| `narrator.yaml` | Voice, language rules, how internal context is consumed |
 | `classifier.yaml` | How the classifier picks a `rule_id` and extracts context fields |
 | `evaluator.yaml` | How the LLM scores a player input as a performance |
 
@@ -298,6 +298,29 @@ Edit any of these and the next process restart picks them up. Useful for:
 
 > When you add a new context field via the classifier, make sure the engine has a
 > matching modifier in some rule's YAML, otherwise the field is parsed but unused.
+
+### Narration style (length / verbosity)
+
+`narrator.yaml` does NOT hardcode how many sentences the narrator writes. Length and
+density live in a separate **style** dimension, controlled by `FANTE_NARRATION_STYLE`
+in `.env`. The three preset styles are defined in
+[src/fante/adapters/bridge_narrator.py](src/fante/adapters/bridge_narrator.py)
+(`_STYLE_INSTRUCTION` dict) and injected into the narrator prompt at startup as
+the `$style_instruction` placeholder:
+
+| Value | Length target | When to use |
+|---|---|---|
+| `concise` (default) | 2 short sentences max | Young child playing by voice — Fante's case |
+| `balanced` | 3–4 sentences with one vivid image | School-age child, or text mode |
+| `rich` | 5–6 sentences with sensory detail | Adult playing, or "demo" sessions |
+
+Switch with `FANTE_NARRATION_STYLE=balanced` in `.env` and restart. No code change
+required.
+
+To **tune the wording** of a style (e.g. push `balanced` to be a bit longer), edit
+the corresponding entry in `_STYLE_INSTRUCTION`. To **add a new style**, append a
+new key to the `NarrationStyle` literal and to `_STYLE_INSTRUCTION`; setting it in
+`.env` will then pick it up.
 
 ---
 
@@ -314,6 +337,8 @@ Edit any of these and the next process restart picks them up. Useful for:
 | New copper topic | markdown + mind_map config + copper personality | no (copper side YAML) | bootstrap script |
 | Update character | `data/player_profile.json` | no | next session |
 | Change narrator voice | `prompts/narrator.yaml` | no | fante restart |
+| Change narration length/style | `FANTE_NARRATION_STYLE` in `.env` (`concise`/`balanced`/`rich`) | no | fante restart |
+| Add a new narration style | `_STYLE_INSTRUCTION` in `bridge_narrator.py` + literal update | yes (1 py file) | fante restart |
 | Teach classifier a new context field | `prompts/classifier.yaml` + engine modifier | no | fante restart + engine release if modifier changed |
 
 ---
