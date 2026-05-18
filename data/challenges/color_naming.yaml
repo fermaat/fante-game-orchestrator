@@ -7,12 +7,29 @@ min_age: 3
 max_age: 9
 prompt: "Antes de actuar, dime:"
 config:
+  # Notes on writing the `accepted` lists:
+  #   - The adapter normalizes case and strips accents before matching, so
+  #     "MARRON" and "marrón" both match "marrón".
+  #   - Spanish gender agreement is NOT normalized: include both forms when
+  #     the noun is feminine ("nieve" → blanco AND blanca, "cueva" → oscuro
+  #     AND oscura, etc.). Adjectives that don't change with gender (marrón,
+  #     café, azul, verde, gris) only need one entry.
+  #   - Plural variants are worth including when the noun is plural ("hojas"
+  #     → verdes alongside verde).
   pool:
     - prompt: "¿De qué color es la madera mojada?"
-      accepted: [marrón, marron, café, cafe, oscuro, negro]
+      accepted: [marrón, marron, café, cafe, oscura, oscuro, negra, negro]
     - prompt: "¿De qué color es el cielo de noche?"
       accepted: [negro, "azul oscuro", oscuro]
     - prompt: "¿De qué color son las hojas en verano?"
-      accepted: [verde, "verde claro", "verde oscuro"]
+      accepted: [verde, verdes, "verde claro", "verdes claras", "verde oscuro", "verdes oscuras"]
     - prompt: "¿De qué color es la nieve?"
-      accepted: [blanco, "blanco brillante"]
+      accepted: [blanco, blanca, "blanco brillante", "blanca brillante"]
+    - prompt: "¿De qué color es el sol?"
+      accepted: [amarillo, naranja, dorado, "amarillo brillante"]
+    - prompt: "¿De qué color son las hojas en otoño?"
+      accepted: [naranja, naranjas, marrón, marron, rojo, rojos, roja, rojas, amarillo, amarillos]
+    - prompt: "¿De qué color es el agua del río?"
+      accepted: [azul, "azul claro", transparente, verde]
+    - prompt: "¿De qué color es el fuego?"
+      accepted: [rojo, naranja, amarillo, "rojo y naranja"]
