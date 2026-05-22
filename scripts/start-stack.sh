@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+# start-stack.sh — bring the Fante service stack up or down with one command.
+#
+# Manages two background services:
+#   - copper         → Docker  (knowledge backend, port 8000)
+#   - speech-io-hub  → native  (STT/TTS, port 8500) — kept native so Whisper
+#                               keeps Apple Silicon (Metal) acceleration
+#
+# NOT managed here (run/spawned separately):
+#   - Ollama          → system service; this script only checks reachability
+#   - mcp-game-rules  → fante spawns it as a subprocess on its own
+#
+# Usage:
+#   ./scripts/start-stack.sh [start]   # bring everything up (default)
+#   ./scripts/start-stack.sh stop      # bring everything down
+#   ./scripts/start-stack.sh restart   # stop + start
+#   ./scripts/start-stack.sh status    # show what's running
+#
+# Sibling repos are expected at ../copper and ../core-speech-io-hub relative to
+# this repo. Override with COPPER_DIR / SPEECH_DIR env vars if elsewhere.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECTS_DIR="$(cd "$REPO_ROOT/.." && pwd)"
+
+COPPER_DIR="${COPPER_DIR:-$PROJECTS_DIR/copper}"
+SPEECH_DIR="${SPEECH_DIR:-$PROJECTS_DIR/core-speech-io-hub}"
+
+COPPER_URL="${COPPER_URL:-http://127.0.0.1:8000}"
+SPEECH_URL="${SPEECH_URL:-http://127.0.0.1:8500}"
+OLLAMA_URL="${OLLAMA_URL:-http://localhost:11434}"
+
+SPEECH_PIDFILE="/tmp/fante-speech-io-hub.pid"
+SPEECH_LOG="/tmp/fante-speech-io-hub.log"
+
+# ---------- helpers --------------------------------------------------------
+
+_speech_running() {
+  [ -f "$SPEECH_PIDFILE" ] && kill -0 "$(cat "$SPEECH_PIDFILE")" 2>/dev/null
+}
+
+_wait_for() {
+  # _wait_for <url> <label> <timeout_s>
+  local url="$1" label="$2" timeout="${3:-30}" elapsed=0
+  while ! curl -sf "$url" >/dev/null 2>&1; do
+    sleep 1
+    elapsed=$((elapsed + 1))
+    if [ "$elapsed" -ge "$timeout" ]; then
+      echo "  ✗ $label did not become ready within ${timeout}s"
+      return 1
+    fi
+  done
+  echo "  ✓ $label ready"
+}
+
+# ---------- start ----------------------------------------------------------
+
+start() {
+  [ -d "$COPPER_DIR" ] || { echo "Error: copper repo not found at $COPPER_DIR"; exit 1; }
+  [ -d "$SPEECH_DIR" ] || { echo "Error: speech-io-hub repo not found at $SPEECH_DIR"; exit 1; }
+
+  echo "→ Starting copper (Docker)..."
+  (cd "$COPPER_DIR" && docker compose up -d)
+  _wait_for "$COPPER_URL/minds" "copper" 60 || true
+
+  echo "→ Starting speech-io-hub (native)..."
+  if _speech_running; then
+    echo "  (already running, pid $(cat "$SPEECH_PIDFILE"))"
+  else
+    (
+      cd "$SPEECH_DIR"
+      nohup pdm run python -m speech_io_hub > "$SPEECH_LOG" 2>&1 &
+      echo $! > "$SPEECH_PIDFILE"
+    )
+    _wait_for "$SPEECH_URL/health" "speech-io-hub" 30 || {
+      echo "  speech-io-hub log tail:"
+      tail -n 15 "$SPEECH_LOG" | sed 's/^/    /'
+    }
+  fi
+
+  echo "→ Checking Ollama..."
+  if curl -sf "$OLLAMA_URL/api/tags" >/dev/null 2>&1; then
+    echo "  ✓ Ollama reachable"
+  else
+    echo "  ⚠ Ollama not reachable at $OLLAMA_URL — start it before running fante"
+  fi
+
+  echo ""
+  echo "Stack up. speech-io-hub log: $SPEECH_LOG"
+  echo "Play with:  pdm run python -m fante"
+}
+
+# ---------- stop -----------------------------------------------------------
+
+stop() {
+  echo "→ Stopping speech-io-hub..."
+  if _speech_running; then
+    kill "$(cat "$SPEECH_PIDFILE")" 2>/dev/null || true
+  fi
+  # Catch the uvicorn child pdm may have spawned under its own PID.
+  pkill -f "python -m speech_io_hub" 2>/dev/null || true
+  rm -f "$SPEECH_PIDFILE"
+  echo "  ✓ stopped"
+
+  echo "→ Stopping copper (Docker)..."
+  if [ -d "$COPPER_DIR" ]; then
+    (cd "$COPPER_DIR" && docker compose down)
+    echo "  ✓ stopped"
+  else
+    echo "  (copper repo not found, skipping)"
+  fi
+}
+
+# ---------- status ---------------------------------------------------------
+
+_probe() {
+  curl -sf "$1" >/dev/null 2>&1 && echo "up" || echo "down"
+}
+
+status() {
+  echo "copper:        $(_probe "$COPPER_URL/minds")"
+  echo "speech-io-hub: $(_probe "$SPEECH_URL/health")"
+  echo "ollama:        $(_probe "$OLLAMA_URL/api/tags")"
+}
+
+# ---------- dispatch -------------------------------------------------------
+
+case "${1:-start}" in
+  start)   start ;;
+  stop)    stop ;;
+  restart) stop; echo; start ;;
+  status)  status ;;
+  *)       echo "Usage: $0 [start|stop|restart|status]"; exit 1 ;;
+esac

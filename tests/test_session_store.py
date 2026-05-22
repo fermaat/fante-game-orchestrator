@@ -86,6 +86,6 @@ class TestSessionRoundTrip:
         from fante.domain.profile import PlayerProfile
 
         profile = PlayerProfile(name="Fante", language="es")
-        narrator = BridgeNarrator(provider=MockProvider([]), profile=profile, prompt_path=None)
+        narrator = BridgeNarrator(provider=MockProvider([]), profile=profile)
         narrator.seed_history(messages)
         assert narrator.get_history() == messages

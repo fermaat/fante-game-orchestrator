@@ -124,6 +124,44 @@ config:
 
 That's it. Reload fante and the selector can pick this one.
 
+#### Writing good `accepted` lists (lessons from real play)
+
+The `accepted` list is the set of strings the player can say that count as "right".
+A few rules of thumb after observing real sessions:
+
+- **The adapter normalizes case, strips accents, and strips trailing plural `s` on each
+  token.** `"MARRON"`, `"marrón"`, `"marrones"` all match the single entry `"marrón"`.
+  You don't need to list both singular and plural forms.
+- **Spanish gender agreement is NOT normalized.** Include both forms when the noun
+  is feminine:
+  - `"nieve"` (f) → must include both `blanco` AND `blanca`
+  - `"cueva"` (f) → `oscuro` AND `oscura`
+  - `"sangre"` (f) → `rojo` AND `roja`
+  - Conversely, adjectives that don't change with gender (marrón, café, azul, verde,
+    gris, naranja) only need one entry.
+- **Plural variants are auto-handled.** Thanks to plural normalization, listing
+  `verde` already accepts `verdes`. List both ONLY if the spelling differs in
+  unrelated ways (rare for colour names).
+- **Anticipate "almost right" answers from a child.** For a "wet wood" prompt, kids
+  often say `oscuro` or `negro` even though `marrón` is the "right" answer; if those
+  are acceptable to you, include them. It's better to be generous than punitive —
+  the scoring is binary (17 for match, 9 for "tried but missed").
+- **Combinatorial colours**: `"rojo y naranja"`, `"azul oscuro"`, `"verde claro"`
+  — kids do say these, especially when prompted "what colour is fire?". Include the
+  ones that feel natural; you don't need to enumerate every possible permutation.
+
+Quick checklist before committing a new pool entry:
+
+1. Is the noun in the question feminine? → add the `-a` variants.
+2. Is the noun plural? → add the plural variants.
+3. What would a 2–4 year old actually say if shown the thing? → include those even
+   if "less correct".
+4. Are there compound answers that are obvious from the prompt? → include them too.
+
+If you find yourself wishing for fuzzy matching (e.g. accepting `roi` for `rojo`),
+that's a signal that the adapter could be smarter — open a TECH_DEBT entry rather
+than padding the YAML with every misspelling.
+
 ### 2b. Brand-new kind of minigame — YAML + adapter
 
 If the existing adapters can't do what you want, add one Python file in

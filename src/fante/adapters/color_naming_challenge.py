@@ -21,9 +21,14 @@ from fante.ports.io import InputPort, OutputPort
 
 
 def _normalize(s: str) -> str:
-    # Lowercase + strip accents — kids spell loosely.
+    # Lowercase + strip accents + strip trailing plural 's' on the LAST word.
+    # Kids (and Whisper) waver between singular/plural; strip 's' is safe for
+    # colour names because none of them carry meaningful word-final 's'.
     nfd = unicodedata.normalize("NFD", s.lower().strip())
-    return "".join(c for c in nfd if unicodedata.category(c) != "Mn")
+    flat = "".join(c for c in nfd if unicodedata.category(c) != "Mn")
+    # Strip plural 's' from each token so "negras" matches "negra", etc.
+    tokens = [t[:-1] if len(t) > 2 and t.endswith("s") else t for t in flat.split()]
+    return " ".join(tokens)
 
 
 class ColorNamingChallenge:

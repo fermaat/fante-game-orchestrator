@@ -147,8 +147,16 @@ Planned additions (when their first consumer arrives):
 
 ```bash
 pdm install --dev          # first time
+./scripts/start-stack.sh   # bring up copper (Docker) + speech-io-hub (native)
 pdm run python -m fante    # play
+./scripts/start-stack.sh stop   # tear the stack down
 ```
+
+`start-stack.sh` orchestrates the service dependencies: copper runs in Docker,
+speech-io-hub runs natively (so Whisper keeps Apple Silicon acceleration). Ollama
+and the MCP rules server are not managed by it — Ollama runs separately, the rules
+server is spawned by fante as a subprocess. Sub-commands: `start` (default),
+`stop`, `restart`, `status`.
 
 ## Configuration
 

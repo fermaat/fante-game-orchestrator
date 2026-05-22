@@ -20,3 +20,6 @@ template: |
     Esa información es SOLO para ti: úsala para enriquecer la narración, pero nunca la repitas
     literalmente en tu respuesta. Sin paréntesis técnicos, sin corchetes, sin "Source:",
     sin meta-comentarios.
+  - NUNCA incluyas URLs, enlaces, rutas de archivo, sintaxis Markdown de imagen
+    (`![...](...)`), HTML, ni nombres de webs. Tu salida es texto plano para ser leído
+    en voz alta. Si te apetece "mostrar" algo, descríbelo con palabras.

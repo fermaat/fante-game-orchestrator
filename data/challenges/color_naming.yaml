@@ -8,27 +8,29 @@ max_age: 9
 prompt: "Antes de actuar, dime:"
 config:
   # Notes on writing the `accepted` lists:
-  #   - The adapter normalizes case and strips accents before matching, so
-  #     "MARRON" and "marrón" both match "marrón".
-  #   - Spanish gender agreement is NOT normalized: include both forms when
-  #     the noun is feminine ("nieve" → blanco AND blanca, "cueva" → oscuro
-  #     AND oscura, etc.). Adjectives that don't change with gender (marrón,
-  #     café, azul, verde, gris) only need one entry.
-  #   - Plural variants are worth including when the noun is plural ("hojas"
-  #     → verdes alongside verde).
+  #   - The adapter normalizes case, strips accents, and strips trailing plural
+  #     "s" on each token. So "MARRON", "marrón", "marrones" and "marrons" all
+  #     match the single entry "marrón".
+  #   - Spanish gender agreement is NOT normalized: include both forms when the
+  #     noun is feminine ("nieve" → blanco AND blanca, "cueva" → oscuro AND
+  #     oscura, etc.). Adjectives invariable in gender (marrón, café, azul,
+  #     verde, gris, naranja) only need one entry.
+  #   - Because plural is normalized away, you do NOT need to list "verdes" if
+  #     you have "verde". List both ONLY if you also want to accept different
+  #     adjective spellings.
   pool:
     - prompt: "¿De qué color es la madera mojada?"
       accepted: [marrón, marron, café, cafe, oscura, oscuro, negra, negro]
     - prompt: "¿De qué color es el cielo de noche?"
-      accepted: [negro, "azul oscuro", oscuro]
+      accepted: [negro, negra, "azul oscuro", oscuro, oscura]
     - prompt: "¿De qué color son las hojas en verano?"
-      accepted: [verde, verdes, "verde claro", "verdes claras", "verde oscuro", "verdes oscuras"]
+      accepted: [verde, "verde claro", "verde oscuro"]
     - prompt: "¿De qué color es la nieve?"
       accepted: [blanco, blanca, "blanco brillante", "blanca brillante"]
     - prompt: "¿De qué color es el sol?"
       accepted: [amarillo, naranja, dorado, "amarillo brillante"]
     - prompt: "¿De qué color son las hojas en otoño?"
-      accepted: [naranja, naranjas, marrón, marron, rojo, rojos, roja, rojas, amarillo, amarillos]
+      accepted: [naranja, marrón, marron, rojo, roja, amarillo, amarilla]
     - prompt: "¿De qué color es el agua del río?"
       accepted: [azul, "azul claro", transparente, verde]
     - prompt: "¿De qué color es el fuego?"

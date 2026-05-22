@@ -51,9 +51,14 @@ class ChallengeSelector:
             attribute=rule_meta.attribute,
             profile=profile,
         )
-        candidates = [c for c in candidates if c.id not in self._recent]
         if not candidates:
             return None
+        # Prefer candidates not in recent_history, but if the pool is so small
+        # that everything is "recent", fall back to the full set rather than
+        # deadlock returning None forever.
+        fresh = [c for c in candidates if c.id not in self._recent]
+        if fresh:
+            candidates = fresh
 
         weights = [
             self._bias if (session_topic and session_topic in c.topics) else 1.0 for c in candidates
