@@ -167,9 +167,9 @@ def build_game(
     challenge = None
     if settings.fante_challenge_enabled and settings.fante_rules_backend == "mcp":
         from fante.adapters.color_naming_challenge import ColorNamingChallenge
-        from fante.adapters.llm_evaluator_challenge import LLMEvaluatorChallenge
         from fante.adapters.math_quick_challenge import MathQuickChallenge
         from fante.adapters.mcp_rules import MCPRulesAdapter
+        from fante.adapters.repeat_expression_challenge import RepeatExpressionChallenge
         from fante.challenge.dispatcher import ChallengeDispatcher
         from fante.challenge.registry import ChallengeRegistry
         from fante.challenge.selector import ChallengeSelector
@@ -190,9 +190,8 @@ def build_game(
         challenge_adapters: dict[str, object] = {
             "math_quick": MathQuickChallenge(input_port, output_port),
             "color_naming": ColorNamingChallenge(input_port, output_port),
+            "repeat_expression": RepeatExpressionChallenge(input_port, output_port),
         }
-        if evaluator is not None:
-            challenge_adapters["llm_evaluator"] = LLMEvaluatorChallenge(evaluator)
         challenge = ChallengeDispatcher(adapters=challenge_adapters)  # type: ignore[arg-type]
 
     game = GameManager(

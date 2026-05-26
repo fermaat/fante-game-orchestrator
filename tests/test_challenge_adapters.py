@@ -7,6 +7,7 @@ import pytest
 from fante.adapters.automatic_challenge import AutomaticChallenge
 from fante.adapters.color_naming_challenge import ColorNamingChallenge
 from fante.adapters.math_quick_challenge import MathQuickChallenge
+from fante.adapters.repeat_expression_challenge import RepeatExpressionChallenge
 from fante.challenge.dispatcher import ChallengeDispatcher
 from fante.domain.challenge import ChallengeSpec
 from fante.domain.profile import Attributes, PlayerProfile
@@ -88,6 +89,19 @@ def test_color_correct_normalized() -> None:
 
 
 @pytest.mark.functional
+def test_color_ignores_trailing_punctuation() -> None:
+    out = FakeOutput()
+    in_ = FakeInput(["blanca,"])  # comma artifact from STT or typing
+    adapter = ColorNamingChallenge(in_, out, rng=random.Random(0))
+    spec = _spec(
+        "color_naming",
+        pool=[{"prompt": "¿De qué color es la nieve?", "accepted": ["blanco", "blanca"]}],
+    )
+    score = adapter.run(spec, "trepo", _profile())
+    assert score == 17
+
+
+@pytest.mark.functional
 def test_color_unknown_returns_partial() -> None:
     out = FakeOutput()
     in_ = FakeInput(["rojo"])
@@ -98,6 +112,56 @@ def test_color_unknown_returns_partial() -> None:
     )
     score = adapter.run(spec, "trepo", _profile())
     assert 0 < score < 15
+
+
+@pytest.mark.functional
+def test_repeat_full_match_returns_high_score() -> None:
+    out = FakeOutput()
+    in_ = FakeInput(["trepa trepa trepa"])
+    adapter = RepeatExpressionChallenge(in_, out, rng=random.Random(0))
+    spec = _spec("repeat_expression", pool=[{"expression": "trepa trepa trepa"}])
+    score = adapter.run(spec, "trepo", _profile())
+    assert score == 18
+
+
+@pytest.mark.functional
+def test_repeat_partial_overlap_passes_when_half_covered() -> None:
+    out = FakeOutput()
+    in_ = FakeInput(["UNO DOS"])  # 2 of 3 tokens
+    adapter = RepeatExpressionChallenge(in_, out, rng=random.Random(0))
+    spec = _spec("repeat_expression", pool=[{"expression": "uno dos tres"}])
+    score = adapter.run(spec, "trepo", _profile())
+    assert score == 18
+
+
+@pytest.mark.functional
+def test_repeat_too_little_overlap_returns_tried() -> None:
+    out = FakeOutput()
+    in_ = FakeInput(["pelota azul"])  # zero overlap
+    adapter = RepeatExpressionChallenge(in_, out, rng=random.Random(0))
+    spec = _spec("repeat_expression", pool=[{"expression": "uno dos tres"}])
+    score = adapter.run(spec, "trepo", _profile())
+    assert score == 10
+
+
+@pytest.mark.functional
+def test_repeat_empty_input_returns_low_score() -> None:
+    out = FakeOutput()
+    in_ = FakeInput([""])
+    adapter = RepeatExpressionChallenge(in_, out, rng=random.Random(0))
+    spec = _spec("repeat_expression", pool=[{"expression": "trepa"}])
+    score = adapter.run(spec, "trepo", _profile())
+    assert score == 5
+
+
+@pytest.mark.functional
+def test_repeat_ignores_accents_and_punctuation() -> None:
+    out = FakeOutput()
+    in_ = FakeInput(["abracadabra"])  # without exclamation marks
+    adapter = RepeatExpressionChallenge(in_, out, rng=random.Random(0))
+    spec = _spec("repeat_expression", pool=[{"expression": "¡abracadabra!"}])
+    score = adapter.run(spec, "trepo", _profile())
+    assert score == 18
 
 
 @pytest.mark.functional

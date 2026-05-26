@@ -21,11 +21,14 @@ from fante.ports.io import InputPort, OutputPort
 
 
 def _normalize(s: str) -> str:
-    # Lowercase + strip accents + strip trailing plural 's' on the LAST word.
-    # Kids (and Whisper) waver between singular/plural; strip 's' is safe for
-    # colour names because none of them carry meaningful word-final 's'.
+    # Lowercase + strip accents + strip punctuation + strip trailing plural 's'.
+    # Kids (and Whisper) waver between singular/plural and add stray commas /
+    # exclamation marks; strip 's' is safe for colour names because none of them
+    # carry meaningful word-final 's'.
     nfd = unicodedata.normalize("NFD", s.lower().strip())
     flat = "".join(c for c in nfd if unicodedata.category(c) != "Mn")
+    # Replace any non-alphanumeric character with a space so punctuation drops.
+    flat = "".join(c if c.isalnum() or c.isspace() else " " for c in flat)
     # Strip plural 's' from each token so "negras" matches "negra", etc.
     tokens = [t[:-1] if len(t) > 2 and t.endswith("s") else t for t in flat.split()]
     return " ".join(tokens)

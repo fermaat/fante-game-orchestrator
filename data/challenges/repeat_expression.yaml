@@ -1,0 +1,31 @@
+id: repeat_expression
+adapter: repeat_expression
+# Broad on purpose — this is the universal "always available" minigame for very
+# young players. Most rules will match it, so it slots in when the selector has
+# no better-fitting visible minigame.
+categories: [language, memory, physical, mental, reflexes]
+attributes: [presence, awareness, intellect, strength, speed, willpower]
+topics: [languages, adventure, lore, math]
+min_age: 2
+max_age: 8
+prompt: "Repite conmigo:"
+config:
+  # Pool of expressions to repeat. Short, rhythmic, and fun to say.
+  # Mix of action-relevant ("trepa trepa") and pure-play ("guau guau", numbers).
+  # Add more freely — the matcher is tolerant of partial repetition.
+  pool:
+    - expression: "trepa trepa trepa"
+    - expression: "salta salta salta"
+    - expression: "corre corre"
+    - expression: "splash splash"
+    - expression: "¡yo puedo!"
+    - expression: "¡vamos!"
+    - expression: "uno dos tres"
+    - expression: "uno y dos"
+    - expression: "¡abracadabra!"
+    - expression: "guau guau"
+    - expression: "miau miau"
+    - expression: "muuu"
+    - expression: "elefante grande"
+    - expression: "fuerte fuerte"
+    - expression: "arriba abajo"
