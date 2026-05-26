@@ -47,14 +47,11 @@ for mind in adventure math languages lore; do
     > /dev/null \
     || echo "  (already exists, skipping forge)"
 
-  echo "  Setting tap_personality..."
-  python3 -c "
-import yaml, pathlib
-p = pathlib.Path.home() / '.copper' / 'minds' / '$mind' / '.copper' / 'config.yaml'
-d = yaml.safe_load(p.read_text())
-d['tap_personality'] = 'tap.$mind'
-p.write_text(yaml.dump(d, default_flow_style=False, allow_unicode=True))
-"
+  # Note: per-mind `tap_personality` is intentionally NOT set here. Fante passes
+  # `personality: "tap.<topic>"` explicitly in every /tap request, which takes
+  # precedence over the mind's config. Avoiding the file edit also makes this
+  # script work with copper in Docker (where minds live in a volume the host
+  # can't easily reach).
 
   for raw_file in "$MINDS_DIR/$mind/raw/"*.md; do
     [ -f "$raw_file" ] || continue

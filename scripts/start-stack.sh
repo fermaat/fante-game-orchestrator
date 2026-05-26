@@ -62,11 +62,11 @@ start() {
 
   echo "→ Starting copper (Docker)..."
   (cd "$COPPER_DIR" && docker compose up -d)
-  _wait_for "$COPPER_URL/minds" "copper" 60 || true
+  _wait_for "$COPPER_URL/minds" "copper" 120 || true
 
   echo "→ Starting speech-io-hub (native)..."
   if _speech_running; then
-    echo "  (already running, pid $(cat "$SPEECH_PIDFILE"))"
+    echo "  (already running, pid $(cat "$SPEECH_PIDFILE") — use 'restart' to force a fresh launch)"
   else
     (
       cd "$SPEECH_DIR"
@@ -78,6 +78,17 @@ start() {
       tail -n 15 "$SPEECH_LOG" | sed 's/^/    /'
     }
   fi
+  # /health exists in every version — verify the running server actually
+  # exposes the STT+TTS routes, otherwise it's a stale build (missing 3.2).
+  # This check runs whether we launched the server or found it already alive.
+  _routes="$(curl -sf "$SPEECH_URL/openapi.json" 2>/dev/null \
+    | python3 -c 'import sys,json; print(" ".join(json.load(sys.stdin)["paths"]))' 2>/dev/null || true)"
+  for route in /transcribe /synthesize; do
+    case " $_routes " in
+      *" $route "*) ;;
+      *) echo "  ⚠ speech-io-hub is missing $route — running a stale build?" ;;
+    esac
+  done
 
   echo "→ Checking Ollama..."
   if curl -sf "$OLLAMA_URL/api/tags" >/dev/null 2>&1; then

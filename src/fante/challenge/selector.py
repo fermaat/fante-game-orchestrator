@@ -13,6 +13,8 @@ Policy:
 import random
 from collections import deque
 
+from core_utils import logger
+
 from fante.challenge.registry import ChallengeRegistry
 from fante.domain.challenge import ChallengeSpec, RuleMeta
 from fante.domain.profile import PlayerProfile
@@ -40,11 +42,21 @@ class ChallengeSelector:
         profile: PlayerProfile,
     ) -> ChallengeSpec | None:
         if rule_meta.challenge == "none":
+            logger.debug(f"challenge.gate rule_id={rule_meta.rule_id} -> skip (challenge=none)")
             return None
         if rule_meta.challenge_category is None:
+            logger.debug(
+                f"challenge.gate rule_id={rule_meta.rule_id} -> skip (no challenge_category)"
+            )
             return None
-        if rule_meta.challenge == "optional" and self._rng.random() > self._prob:
-            return None
+        if rule_meta.challenge == "optional":
+            roll = self._rng.random()
+            if roll > self._prob:
+                logger.debug(
+                    f"challenge.gate rule_id={rule_meta.rule_id} -> skip "
+                    f"(prob roll {roll:.2f} > threshold {self._prob:.2f})"
+                )
+                return None
 
         candidates = self._registry.filter(
             category=rule_meta.challenge_category,
@@ -52,6 +64,11 @@ class ChallengeSelector:
             profile=profile,
         )
         if not candidates:
+            logger.debug(
+                f"challenge.gate rule_id={rule_meta.rule_id} -> skip "
+                f"(no minigame matches category={rule_meta.challenge_category} "
+                f"attribute={rule_meta.attribute})"
+            )
             return None
         # Prefer candidates not in recent_history, but if the pool is so small
         # that everything is "recent", fall back to the full set rather than
