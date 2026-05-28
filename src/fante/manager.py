@@ -4,6 +4,7 @@ Depends only on port protocols and the EventBus. Knows nothing about
 specific adapters. Adapters are wired in `fante.compose`.
 """
 
+import unicodedata
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Literal
@@ -34,6 +35,12 @@ if TYPE_CHECKING:
 Mode = Literal["dice", "skill", "jukebox"]
 
 
+def _normalize(s: str) -> str:
+    """Lowercase + strip diacritics. Length is preserved (combining marks dropped)."""
+    nfd = unicodedata.normalize("NFD", s.lower())
+    return "".join(c for c in nfd if unicodedata.category(c) != "Mn")
+
+
 class QuitRequested(Exception):
     """Raised by a command handler to signal the game loop should exit."""
 
@@ -56,6 +63,7 @@ class GameManager:
         challenge_selector: "ChallengeSelectorPort | None" = None,
         challenge: "ChallengePort | None" = None,
         jukebox_handler: "JukeboxHandler | None" = None,
+        wake_words: list[str] | None = None,
         session_topic: str | None = None,
         default_mode: Mode = "skill",
     ) -> None:
@@ -74,6 +82,7 @@ class GameManager:
         self._challenge_selector = challenge_selector
         self._challenge = challenge
         self._jukebox_handler = jukebox_handler
+        self._wake_words: list[str] = list(wake_words) if wake_words else []
         self._session_topic = session_topic
         self._mode: Mode = default_mode
         self._turn_index = 0
@@ -102,6 +111,43 @@ class GameManager:
         self._session_topic = topic
 
     # ------------------------------------------------------------------
+    # Wake-word detection
+    # ------------------------------------------------------------------
+
+    def _detect_wake_word(self, user_input: str) -> str | None:
+        """If `user_input` starts with a configured wake word, return the remainder
+        (with leading whitespace and trailing punctuation stripped). Returns None
+        if no wake word matches.
+
+        Matching is case- and accent-insensitive. A word boundary (whitespace,
+        punctuation, or end-of-input) is required after the wake word, so
+        "fantástico" does NOT match "fante".
+
+        Multi-word wake words are supported and matched longest-first.
+        """
+        if not self._wake_words:
+            return None
+
+        text = user_input.lstrip()
+        normalized_text = _normalize(text)
+
+        # Longest wake word first — so "hey fante" beats "fante" when both configured.
+        candidates = sorted(self._wake_words, key=len, reverse=True)
+        for word in candidates:
+            normalized_word = _normalize(word)
+            if not normalized_text.startswith(normalized_word):
+                continue
+            # Require a word boundary after the wake word (or end of input).
+            idx = len(normalized_word)
+            if idx < len(normalized_text) and normalized_text[idx].isalnum():
+                continue
+            # Slice from the ORIGINAL text — preserves casing/accents in the remainder
+            # so it reaches the jukebox handler / song-query classifier intact.
+            remainder = text[idx:].lstrip(",.!? \t")
+            return remainder
+        return None
+
+    # ------------------------------------------------------------------
     # Core operations
     # ------------------------------------------------------------------
 
@@ -110,6 +156,31 @@ class GameManager:
         self._turn_index += 1
         idx = self._turn_index
         self._bus.publish(TurnStarted(turn_index=idx, user_input=user_input))
+
+        # ---- Wake-word shortcut → enter jukebox + execute remainder ---------------
+        remainder = self._detect_wake_word(user_input)
+        if remainder is not None:
+            if self._jukebox_handler is None:
+                message = "(Modo jukebox no disponible.)"
+                self._output.emit(message)
+                self._bus.publish(NarrationGenerated(turn_index=idx, narration=message))
+                self._bus.publish(TurnFinished(turn_index=idx))
+                self._autosave()
+                return message
+
+            self._mode = "jukebox"
+            if not remainder:
+                message = "Dime."
+            else:
+                message, should_exit = self._jukebox_handler.process(remainder)
+                if should_exit:
+                    self._mode = "skill"
+            self._output.emit(message)
+            self._bus.publish(NarrationGenerated(turn_index=idx, narration=message))
+            self._bus.publish(TurnFinished(turn_index=idx))
+            self._autosave()
+            return message
+        # --------------------------------------------------------------------------
 
         # Jukebox mode: delegate entirely to the jukebox handler, skip RPG pipeline.
         if self._mode == "jukebox" and self._jukebox_handler is not None:

@@ -362,10 +362,64 @@ new key to the `NarrationStyle` literal and to `_STYLE_INSTRUCTION`; setting it 
 
 ---
 
+## 6. Songs (jukebox)
+
+The jukebox catalog lives in **`core-music-hub`**, not in this repo. Fante is purely
+the voice client. To add or change songs, edit the catalog there.
+
+Quick steps (full instructions in `core-music-hub/data/songs/README.md`):
+
+1. Drop the audio file into `core-music-hub/data/songs/` (MP3/WAV/OGG, simple
+   filename).
+2. Add an entry to `core-music-hub/data/songs/catalog.yaml`:
+   ```yaml
+   songs:
+     - id: cocodrilo
+       title: "El cocodrilo Dante"
+       file: cocodrilo_dante.mp3
+       aliases: [dante, "el cocodrilo"]
+       moods: [playful, happy]
+       tags: [animal, classic]
+   ```
+3. Restart `core-music-hub` (`./scripts/start-stack.sh restart`).
+4. Inside fante, `/jukebox` and ask: "pon el cocodrilo".
+
+Fante's jukebox intent classifier learns the catalog aliases at startup — restart
+fante after changing the catalog so the new aliases are picked up.
+
+### Wake-word shortcut
+
+To let the kid jump straight into jukebox mode by voice — without saying `/jukebox`
+first — set `FANTE_WAKE_WORDS` in your local `.env`:
+
+```
+FANTE_WAKE_WORDS=["fante","fan","fantito"]
+```
+
+Any utterance starting with one of these words is interpreted as:
+- switch to jukebox mode
+- execute the rest of the utterance as a jukebox request
+
+So "fante pon el caballo" enters jukebox + plays the caballo song. "fante" alone
+enters jukebox and prompts the kid to say what he wants.
+
+The slash command `/jukebox` keeps working in parallel — it's the typing path.
+
+To exit jukebox: say "salir" / "aventura" / "vuelve al juego", or type `/aventura`.
+
+Requirements:
+- `core-music-hub` running and reachable at `FANTE_MUSIC_HUB_URL` (default
+  `http://127.0.0.1:8600`).
+- `ffmpeg` installed where music-hub runs (it decodes MP3 with pydub).
+
+---
+
 ## Common tasks at a glance
 
 | Task | Files | Code? | Restart? |
 |---|---|---|---|
+| Add a new song | `core-music-hub/data/songs/*.{mp3,yaml}` | no | core-music-hub + fante restart |
+| Add a voice wake word | `FANTE_WAKE_WORDS` in `.env` | no | fante restart |
 | New rule | engine `*.yaml` | no | new engine release + `pdm install` |
 | New rule with copper hook | engine `*.yaml` (set `knowledge_topic`) | no | engine release |
 | New rule with minigame hook | engine `*.yaml` (set `challenge` + `challenge_category`) | no | engine release |

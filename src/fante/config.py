@@ -58,6 +58,8 @@ class FanteSettings(BridgeSettings):  # type: ignore[misc]
     fante_music_hub_url: str = "http://127.0.0.1:8600"
     fante_jukebox_intent_model: str = ""  # empty → ollama_default_model
 
+    fante_wake_words: list[str] = ["fante"]
+
     fante_audio_enabled: bool = False
     fante_speech_url: str = "http://127.0.0.1:8500"
     fante_speech_vocabulary_path: Path = Path("data/speech_vocabulary.yaml")

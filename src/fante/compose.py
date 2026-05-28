@@ -235,6 +235,7 @@ def build_game(
         challenge_selector=challenge_selector,
         challenge=challenge,
         jukebox_handler=jukebox_handler,
+        wake_words=settings.fante_wake_words,
         session_topic=session_topic,
         default_mode=settings.fante_default_mode,
         command_handler=CommandHandler(
