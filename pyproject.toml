@@ -4,7 +4,7 @@ build-backend = "pdm.backend"
 
 [project]
 name = "fante-game-orchestrator"
-version = "0.3.0"
+version = "0.4.0"
 description = "Game loop orchestrator for a voice/text RPG"
 readme = "README.md"
 requires-python = "==3.12.*"
@@ -12,6 +12,7 @@ dependencies = [
     "core-utils @ git+https://github.com/fermaat/core-utils.git",
     "core-llm-bridge @ git+https://github.com/fermaat/core-llm-bridge.git",
     "core-speech-io-hub @ git+https://github.com/fermaat/core-speech-io-hub.git",
+    "core-music-hub @ git+https://github.com/fermaat/core-music-hub.git",
     "mcp-game-rules @ git+https://github.com/fermaat/fante-mcp-game-rules.git",
     "pyyaml>=6.0.3",
     "mcp>=1.27.0",
@@ -77,6 +78,7 @@ module = [
     "core_llm_bridge.*",
     "core_utils.*",
     "speech_io_hub.*",
+    "core_music_hub.*",
 ]
 ignore_missing_imports = true
 

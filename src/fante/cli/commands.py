@@ -11,6 +11,8 @@ Commands implemented:
   /check <rule_id> [json_context] — action check via rules backend
   /dice              — switch to dice mode for this session
   /skill             — switch to skill mode for this session
+  /jukebox           — switch to jukebox mode (only if music-hub is configured)
+  /aventura          — switch back to adventure (RPG) mode
   /topic [name]      — set session knowledge topic (empty to clear)
   /save              — force-persist the current session
   /reset             — clear history and session
@@ -27,7 +29,7 @@ from fante.domain.profile import PlayerProfile
 from fante.manager import QuitRequested
 from fante.ports import RulesPort
 
-Mode = Literal["dice", "skill"]
+Mode = Literal["dice", "skill", "jukebox"]
 
 
 class CommandHandler:
@@ -48,6 +50,7 @@ class CommandHandler:
         get_profile: Callable[[], PlayerProfile] | None = None,
         get_mode: Callable[[], Mode] | None = None,
         set_mode: Callable[[Mode], None] | None = None,
+        set_mode_jukebox: Callable[[], None] | None = None,
         set_session_topic: Callable[[str | None], None] | None = None,
     ) -> None:
         self._profile_name = profile_name
@@ -59,6 +62,7 @@ class CommandHandler:
         self._get_profile = get_profile
         self._get_mode = get_mode
         self._set_mode = set_mode
+        self._set_mode_jukebox = set_mode_jukebox
         self._set_session_topic = set_session_topic
 
     def __call__(self, line: str) -> str | None:
@@ -84,6 +88,13 @@ class CommandHandler:
             return self._set_mode_cmd("dice")
         if cmd == "/skill":
             return self._set_mode_cmd("skill")
+        if cmd == "/jukebox":
+            return self._jukebox_cmd()
+        if cmd == "/aventura":
+            if self._set_mode is None:
+                return "(El cambio de modo no está disponible.)"
+            self._set_mode("skill")
+            return "De vuelta a la aventura."
         if cmd == "/topic":
             return self._topic_cmd(arg)
         return None  # unknown /command — let narrator handle it
@@ -158,11 +169,21 @@ class CommandHandler:
             f"  Semilla narrativa: {seed}"
         )
 
+    def _jukebox_cmd(self) -> str:
+        if self._set_mode_jukebox is None:
+            return "(Modo jukebox no disponible — comprueba que core-music-hub está arriba.)"
+        self._set_mode_jukebox()
+        return "Modo jukebox activado. Dime qué canción quieres."
+
     def _set_mode_cmd(self, mode: Mode) -> str:
         if self._set_mode is None:
             return "(El cambio de modo no está disponible.)"
         self._set_mode(mode)
-        labels = {"dice": "dados (d20)", "skill": "habilidad (evaluador)"}
+        labels: dict[str, str] = {
+            "dice": "dados (d20)",
+            "skill": "habilidad (evaluador)",
+            "jukebox": "jukebox",
+        }
         return f"Modo cambiado a: {labels[mode]}."
 
     def _topic_cmd(self, arg: str) -> str:

@@ -34,7 +34,7 @@ class FanteSettings(BridgeSettings):  # type: ignore[misc]
     fante_classifier_enabled: bool = True
     fante_classifier_model: str = ""
     fante_evaluator_model: str = ""
-    fante_default_mode: Literal["dice", "skill"] = "skill"
+    fante_default_mode: Literal["dice", "skill", "jukebox"] = "skill"
     fante_evaluator_fallback_score: int = 12
 
     fante_copper_enabled: bool = False
@@ -53,6 +53,10 @@ class FanteSettings(BridgeSettings):  # type: ignore[misc]
     fante_challenge_optional_prob: float = 0.5
     fante_challenge_topic_bias: float = 2.0
     fante_challenge_recent_history: int = 3
+
+    fante_jukebox_enabled: bool = True
+    fante_music_hub_url: str = "http://127.0.0.1:8600"
+    fante_jukebox_intent_model: str = ""  # empty → ollama_default_model
 
     fante_audio_enabled: bool = False
     fante_speech_url: str = "http://127.0.0.1:8500"

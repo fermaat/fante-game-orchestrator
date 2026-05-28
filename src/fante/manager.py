@@ -23,6 +23,7 @@ from fante.events.bus import EventBus
 from fante.ports import InputPort, NarratorPort, OutputPort, ProfileStore, RulesPort, SessionStore
 
 if TYPE_CHECKING:
+    from fante.jukebox.handler import JukeboxHandler
     from fante.ports.challenge import ChallengePort
     from fante.ports.challenge_selector import ChallengeSelectorPort
     from fante.ports.evaluator import PerformanceEvaluatorPort
@@ -30,7 +31,7 @@ if TYPE_CHECKING:
     from fante.ports.rule_meta import RuleMetaProvider
     from fante.turn.classifier import ActionClassifier
 
-Mode = Literal["dice", "skill"]
+Mode = Literal["dice", "skill", "jukebox"]
 
 
 class QuitRequested(Exception):
@@ -54,6 +55,7 @@ class GameManager:
         rule_meta_provider: "RuleMetaProvider | None" = None,
         challenge_selector: "ChallengeSelectorPort | None" = None,
         challenge: "ChallengePort | None" = None,
+        jukebox_handler: "JukeboxHandler | None" = None,
         session_topic: str | None = None,
         default_mode: Mode = "skill",
     ) -> None:
@@ -71,6 +73,7 @@ class GameManager:
         self._rule_meta_provider = rule_meta_provider
         self._challenge_selector = challenge_selector
         self._challenge = challenge
+        self._jukebox_handler = jukebox_handler
         self._session_topic = session_topic
         self._mode: Mode = default_mode
         self._turn_index = 0
@@ -107,6 +110,17 @@ class GameManager:
         self._turn_index += 1
         idx = self._turn_index
         self._bus.publish(TurnStarted(turn_index=idx, user_input=user_input))
+
+        # Jukebox mode: delegate entirely to the jukebox handler, skip RPG pipeline.
+        if self._mode == "jukebox" and self._jukebox_handler is not None:
+            message, should_exit = self._jukebox_handler.process(user_input)
+            if should_exit:
+                self._mode = "skill"  # back to RPG default
+            self._output.emit(message)
+            self._bus.publish(NarrationGenerated(turn_index=idx, narration=message))
+            self._bus.publish(TurnFinished(turn_index=idx))
+            self._autosave()
+            return message
 
         check_result = None
         knowledge: str | None = None

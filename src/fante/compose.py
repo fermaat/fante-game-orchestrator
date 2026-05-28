@@ -5,6 +5,7 @@ Tests build their own composition using fakes; production code calls
 """
 
 from core_llm_bridge.providers.ollama import OllamaProvider
+from core_utils import logger
 from core_utils.logger import configure_logger
 
 from fante.adapters import (
@@ -162,6 +163,31 @@ def build_game(
         input_port = StdinInput()
         output_port = StdoutOutput()
 
+    # --- Jukebox wiring -------------------------------------------------------
+    jukebox_handler = None
+    if settings.fante_jukebox_enabled:
+        from core_music_hub.client.client import MusicHubClient
+
+        from fante.jukebox.handler import JukeboxHandler
+        from fante.jukebox.intent import JukeboxIntentClassifier
+
+        music_client = MusicHubClient(base_url=settings.fante_music_hub_url)
+        # Pre-fetch the catalog so the intent classifier knows the aliases at startup.
+        # If music-hub is unreachable, skip wiring rather than crashing the whole game.
+        try:
+            catalog = music_client.catalog()
+            aliases = [a for s in catalog for a in [s["id"], *s.get("aliases", [])]]
+            jukebox_classifier = JukeboxIntentClassifier(
+                provider=_make_provider(settings, settings.fante_jukebox_intent_model),
+                known_aliases=aliases,
+            )
+            jukebox_handler = JukeboxHandler(client=music_client, classifier=jukebox_classifier)
+        except Exception:
+            logger.exception(
+                "jukebox: could not reach music-hub at %s; jukebox mode disabled",
+                settings.fante_music_hub_url,
+            )
+
     rule_meta_provider = None
     challenge_selector = None
     challenge = None
@@ -208,6 +234,7 @@ def build_game(
         rule_meta_provider=rule_meta_provider,
         challenge_selector=challenge_selector,
         challenge=challenge,
+        jukebox_handler=jukebox_handler,
         session_topic=session_topic,
         default_mode=settings.fante_default_mode,
         command_handler=CommandHandler(
@@ -220,6 +247,7 @@ def build_game(
             get_profile=lambda: profile,
             get_mode=lambda: game.mode,
             set_mode=lambda m: game.set_mode(m),
+            set_mode_jukebox=(lambda: game.set_mode("jukebox")) if jukebox_handler else None,
             set_session_topic=lambda t: game.set_session_topic(t),
         ),
     )

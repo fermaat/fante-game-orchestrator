@@ -16,7 +16,11 @@ src/fante/
 ├── __init__.py
 ├── __main__.py             # `python -m fante`
 ├── main.py                 # CLI entry — calls compose.build_game().run()
-├── compose.py              # Composition root: wires adapters → ports → GameManager
+├── compose.py              # Composition root: wires adapters → ports → GameManager (incl. jukebox)
+├── jukebox/                # NEW — jukebox mode (voice → core-music-hub)
+│   ├── __init__.py
+│   ├── intent.py           # JukeboxIntentClassifier — LLM parses play/stop/next/list/exit
+│   └── handler.py          # JukeboxHandler — intent → MusicHubClient HTTP calls
 ├── config.py               # FanteSettings (subclass of bridge Settings)
 ├── manager.py              # GameManager — central orchestrator (knows only ports + bus)
 ├── ports/                  # Protocol definitions (capabilities)
@@ -178,6 +182,9 @@ Inherits all bridge env vars (`OLLAMA_*`, `ANTHROPIC_*`, `OPENAI_*`, `LOG_*`).
 | `FANTE_CHALLENGE_OPTIONAL_PROB` | `0.5` | Activation probability for `challenge: optional` rules |
 | `FANTE_CHALLENGE_TOPIC_BIAS` | `2.0` | Weight multiplier when session_topic matches |
 | `FANTE_CHALLENGE_RECENT_HISTORY` | `3` | Sliding window of recent picks to exclude |
+| `FANTE_JUKEBOX_ENABLED` | `true` | Enable jukebox mode (disabled automatically if music-hub unreachable) |
+| `FANTE_MUSIC_HUB_URL` | `http://127.0.0.1:8600` | core-music-hub service base URL |
+| `FANTE_JUKEBOX_INTENT_MODEL` | `""` | LLM model for jukebox classifier (empty → ollama_default_model) |
 | `FANTE_AUDIO_ENABLED` | `false` | Enable voice mode (WhisperInput + TTSOutput) |
 | `FANTE_SPEECH_URL` | `http://127.0.0.1:8500` | core-speech-io-hub service base URL |
 | `FANTE_SPEECH_VOCABULARY_PATH` | `data/speech_vocabulary.yaml` | Whisper biasing vocabulary |
@@ -185,7 +192,7 @@ Inherits all bridge env vars (`OLLAMA_*`, `ANTHROPIC_*`, `OPENAI_*`, `LOG_*`).
 
 ## Dependencies
 
-- Runtime: `core-utils`, `core-llm-bridge`, `core-speech-io-hub`, `pyyaml`
+- Runtime: `core-utils`, `core-llm-bridge`, `core-speech-io-hub`, `core-music-hub`, `pyyaml`
 - Dev: pytest, pytest-cov, black, mypy, ruff, isort
 
 ## Testing
@@ -214,6 +221,7 @@ pdm run pytest -m integration -v   # opt-in, requires Ollama running
 - **Phase 2.D ✓** — Knowledge topic routing moved to rules engine (`CheckResult.knowledge_topic` from pack YAML) + session-level override (`--topic` CLI flag, `/topic` slash command, `GameManager.session_topic`). 87 tests pass.
 - **Phase 2.E ✓** — Challenge / minigame system. New ports `RuleMetaProvider`, `ChallengeSelectorPort`, `ChallengePort`. `ChallengeRegistry` loads `data/challenges/*.yaml`; `ChallengeSelector` filters by category/attribute/age, applies session-topic bias and recent-N exclusion. `ChallengeDispatcher` routes by `adapter_id`. Adapters: `AutomaticChallenge`, `LLMEvaluatorChallenge`, `MathQuickChallenge`, `ColorNamingChallenge`. Requires engine `get_rule_meta` MCP tool (Phase 2.E.1 in `fante-mcp-game-rules`). 107 tests pass.
 - **Phase 3.3 ✓** — Audio adapters: `WhisperInput` (VAD + Whisper via `core-speech-io-hub`) and `TTSOutput` (Piper/`say` TTS). `data/speech_vocabulary.yaml` loaded at startup for Whisper biasing. `FANTE_AUDIO_ENABLED` env var switches mode at startup (no live toggle). Text still echoed to stdout in audio mode for the parent. `core-speech-io-hub` git dep added. 117 tests pass.
+- **Phase 3.4 ✓** — Jukebox mode. New `"jukebox"` mode in `GameManager.Mode`; `JukeboxIntentClassifier` (LLM, parses play/stop/next/list/exit); `JukeboxHandler` (delegates to `MusicHubClient`); `/jukebox` + `/aventura` slash commands; graceful fallback if `core-music-hub` is unreachable. `core-music-hub` git dep added. 130 tests pass.
 - **Phase 3.5** — Character progression: XP, level, level-based check influences. Updates `PlayerProfile` schema.
 - **Phase 3.6** — Challenge system depth (tracked via `TD-CH-*` items folded in below):
     - **3.6.1** Cooldown by category (extend recent-history to track categories, not just IDs).
@@ -225,7 +233,7 @@ pdm run pytest -m integration -v   # opt-in, requires Ollama running
 
 ## Consumers / upstream
 
-- **Uses:** `core-llm-bridge` (LLM narration), `core-utils` (settings, logging)
+- **Uses:** `core-llm-bridge` (LLM narration), `core-utils` (settings, logging), `core-music-hub` (jukebox playback)
 - **Used by:** nothing — this is the top-level application
 
 ## Notes
