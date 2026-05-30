@@ -166,6 +166,8 @@ def build_game(
     # --- Jukebox wiring -------------------------------------------------------
     jukebox_handler = None
     if settings.fante_jukebox_enabled:
+        import httpx
+
         from core_music_hub.client.client import MusicHubClient
 
         from fante.jukebox.handler import JukeboxHandler
@@ -182,10 +184,16 @@ def build_game(
                 known_aliases=aliases,
             )
             jukebox_handler = JukeboxHandler(client=music_client, classifier=jukebox_classifier)
+        except httpx.ConnectError as exc:
+            # Expected case: music-hub not running. Don't spam the user with a traceback.
+            logger.warning(
+                f"jukebox: music-hub not reachable at {settings.fante_music_hub_url} "
+                f"({exc}). Jukebox mode disabled — start core-music-hub to enable it."
+            )
         except Exception:
             logger.exception(
-                "jukebox: could not reach music-hub at %s; jukebox mode disabled",
-                settings.fante_music_hub_url,
+                f"jukebox: unexpected error initialising from "
+                f"{settings.fante_music_hub_url}; jukebox mode disabled"
             )
 
     rule_meta_provider = None
