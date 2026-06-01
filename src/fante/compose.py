@@ -153,6 +153,7 @@ def build_game(
             client=speech_client,
             language=stt_language,
             initial_prompt=initial_prompt,
+            input_mode=settings.fante_input_mode,
         )
         output_port = TTSOutput(
             client=speech_client,

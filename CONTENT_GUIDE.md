@@ -387,6 +387,30 @@ Quick steps (full instructions in `core-music-hub/data/songs/README.md`):
 Fante's jukebox intent classifier learns the catalog aliases at startup — restart
 fante after changing the catalog so the new aliases are picked up.
 
+### Input mode (push-to-talk vs always-listening VAD)
+
+In audio mode, fante uses **push-to-talk by default**: each turn it prints
+"(Pulsa Enter y habla — o escribe y pulsa Enter)" and waits. Pressing Enter
+opens the mic; the VAD captures the utterance and closes the mic. Typing text
++ Enter skips the mic entirely (handy for parents debugging or when audio is
+unreliable).
+
+This is recommended because:
+- The mic is closed while TTS and music play, so they don't feed back into the
+  recognizer.
+- Wake-word matching (below) runs against clean transcriptions rather than
+  noise.
+
+If you'd rather have always-listening VAD (legacy behaviour — only useful in
+quiet rooms with no music):
+
+```
+FANTE_INPUT_MODE=vad
+```
+
+A future option (not implemented) is a hands-free acoustic wake-word — see
+`TECH_DEBT.md`.
+
 ### Wake-word shortcut
 
 To let the kid jump straight into jukebox mode by voice — without saying `/jukebox`

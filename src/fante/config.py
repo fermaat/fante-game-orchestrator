@@ -64,6 +64,7 @@ class FanteSettings(BridgeSettings):  # type: ignore[misc]
     fante_speech_url: str = "http://127.0.0.1:8500"
     fante_speech_vocabulary_path: Path = Path("data/speech_vocabulary.yaml")
     fante_tts_voice: str = ""  # empty → server default
+    fante_input_mode: Literal["push_to_talk", "vad"] = "push_to_talk"
 
     fante_narration_style: Literal["concise", "balanced", "rich"] = "concise"
 

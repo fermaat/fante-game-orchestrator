@@ -30,6 +30,34 @@ A single knowledge query takes 10–20s end-to-end because copper does two LLM c
 
 ---
 
+## Voice UX
+
+### TD-VOX-1 — Hands-free acoustic wake-word ("Fante" by voice)
+Today, voice mode uses push-to-talk: a key press (Enter) opens the mic, the VAD
+captures the utterance, the mic closes. This works perfectly with a parent
+supervising. For a more autonomous kid experience, we'd want a continuous
+acoustic wake-word detector — say "Fante" out loud (no key press) and the system
+starts listening.
+
+Approach when we attack this:
+1. **openWakeWord** (open source, ~100MB model). Train a custom wake word for
+   "Fante" from ~50 voice samples (provided by us / the kid) via the project's
+   notebook. Alternative: **Porcupine** (Picovoice) which has cleaner training
+   but requires a free-tier account.
+2. New module in fante (or speech-io-hub): a continuous `sounddevice.InputStream`
+   feeding chunks to the detector. On detection, hand off to the existing VAD
+   capture for the utterance proper.
+3. CPU cost on M4 with openWakeWord is ~5-10% baseline. Negligible.
+4. `WhisperInput` gains a third `input_mode`: `"wake_word"`, alongside
+   `"push_to_talk"` and `"vad"`.
+
+- **Why deferred:** push-to-talk is sufficient with a parent supervising; the
+  effort (model train + integration + testing) is medium (~3-4 days).
+- **Revisit when:** the kid is old enough to be autonomous in sessions, or
+  parent fatigue with pressing Enter justifies the engineering.
+
+---
+
 ## How to add an entry
 
 1. Pick an area heading (or add a new one).
