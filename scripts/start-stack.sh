@@ -84,7 +84,10 @@ start() {
       nohup pdm run python -m speech_io_hub > "$SPEECH_LOG" 2>&1 &
       echo $! > "$SPEECH_PIDFILE"
     )
-    _wait_for "$SPEECH_URL/health" "speech-io-hub" 30 || {
+    # 300s timeout to accommodate first-time Whisper model downloads (especially
+    # turbo / large-v3, which are 800MB-1.5GB and take minutes on first start).
+    # After the first run the model is cached and startup is sub-10s.
+    _wait_for "$SPEECH_URL/health" "speech-io-hub" 300 || {
       echo "  speech-io-hub log tail:"
       tail -n 15 "$SPEECH_LOG" | sed 's/^/    /'
     }

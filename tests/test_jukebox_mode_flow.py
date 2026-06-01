@@ -78,13 +78,17 @@ def test_jukebox_turn_calls_handler_not_narrator():
 
 
 @pytest.mark.functional
-def test_jukebox_turn_emits_message_via_output_port():
+def test_jukebox_turn_returns_message_for_caller_to_emit():
+    """process_turn() returns the message — the outer run() loop is what emits
+    it to OutputPort. process_turn must NOT emit itself (that would double-print
+    and double-speak via TTS)."""
     fake = FakeJukeboxHandler(message="Música parada.")
     game, output, _ = _make_jukebox_game(fake)
 
-    game.process_turn("para")
+    result = game.process_turn("para")
 
-    assert "Música parada." in output.emitted
+    assert result == "Música parada."
+    assert output.emitted == []  # process_turn must not emit by itself
 
 
 @pytest.mark.functional

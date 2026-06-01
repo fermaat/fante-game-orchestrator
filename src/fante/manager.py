@@ -158,11 +158,13 @@ class GameManager:
         self._bus.publish(TurnStarted(turn_index=idx, user_input=user_input))
 
         # ---- Wake-word shortcut → enter jukebox + execute remainder ---------------
+        # Note: we DO NOT call self._output.emit() in these branches. The outer
+        # run() loop emits whatever process_turn() returns, so emitting here
+        # would double-print and double-speak (via TTS).
         remainder = self._detect_wake_word(user_input)
         if remainder is not None:
             if self._jukebox_handler is None:
                 message = "(Modo jukebox no disponible.)"
-                self._output.emit(message)
                 self._bus.publish(NarrationGenerated(turn_index=idx, narration=message))
                 self._bus.publish(TurnFinished(turn_index=idx))
                 self._autosave()
@@ -175,7 +177,6 @@ class GameManager:
                 message, should_exit = self._jukebox_handler.process(remainder)
                 if should_exit:
                     self._mode = "skill"
-            self._output.emit(message)
             self._bus.publish(NarrationGenerated(turn_index=idx, narration=message))
             self._bus.publish(TurnFinished(turn_index=idx))
             self._autosave()
@@ -187,7 +188,6 @@ class GameManager:
             message, should_exit = self._jukebox_handler.process(user_input)
             if should_exit:
                 self._mode = "skill"  # back to RPG default
-            self._output.emit(message)
             self._bus.publish(NarrationGenerated(turn_index=idx, narration=message))
             self._bus.publish(TurnFinished(turn_index=idx))
             self._autosave()
