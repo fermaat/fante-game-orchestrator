@@ -22,5 +22,10 @@ template: |
   - "otra", "siguiente", "cambia"               → action=next
   - "qué tienes", "qué canciones", "lista"      → action=list
   - "salir", "aventura", "vuelve al juego"      → action=exit
+  - Saludos ("hola", "hey fante"), preguntas o comentarios neutros que NO
+    estén relacionados con música → action=exit (el jugador ya no quiere
+    música; sacamos del modo jukebox amablemente).
   - Para `song_query` copia tal cual lo que dijo el jugador, sin traducir.
-  - Si dudas, usa "unknown".
+  - Si dudas entre play y exit, prefiere exit (mejor sacar del modo y volver
+    a aventura que poner una canción al azar).
+  - Si el input es ininteligible, usa "unknown".

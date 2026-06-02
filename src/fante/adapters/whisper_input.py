@@ -15,13 +15,37 @@ GameManager loop treats empty as "try again", not as EOF). It returns None only
 when stdin closes during push-to-talk waiting.
 """
 
+import sys
 from typing import Literal
 
 from core_utils import logger
 from speech_io_hub.audio.vad import record_until_silence
 from speech_io_hub.client.client import SpeechClient
 
+try:
+    import termios
+
+    _HAS_TERMIOS = True
+except ImportError:
+    _HAS_TERMIOS = False
+
 InputMode = Literal["push_to_talk", "vad"]
+
+
+def _flush_stdin() -> None:
+    """Discard any Enter / characters buffered in stdin before prompting.
+
+    Prevents the "phantom Enter" effect where a queued Enter from a previous
+    turn causes input() to return immediately, making it look like the user
+    didn't press anything but the mic opened anyway. Best-effort: no-op when
+    stdin isn't a terminal (CI, pipes) or on non-POSIX systems.
+    """
+    if not _HAS_TERMIOS:
+        return
+    try:
+        termios.tcflush(sys.stdin, termios.TCIFLUSH)
+    except (termios.error, OSError):
+        pass
 
 
 class WhisperInput:
@@ -41,6 +65,7 @@ class WhisperInput:
 
     def read(self) -> str | None:
         if self._input_mode == "push_to_talk":
+            _flush_stdin()  # discard buffered Enter from previous turns
             print("(Pulsa Enter y habla — o escribe y pulsa Enter)", flush=True)
             try:
                 typed = input().strip()

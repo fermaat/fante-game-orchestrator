@@ -50,8 +50,8 @@ class JukeboxHandler:
                 self._client.stop()
             except Exception:
                 pass
-            return "Volvemos a la aventura.", True
-        return "No te he entendido. Puedes pedir una canción, parar, o salir.", False
+            return "Dejo la música. ¡Volvemos a la aventura!", True
+        return "No te he entendido. Pide una canción, di 'otra', 'para', o 'salir'.", False
 
     def _handle_play(self, intent: JukeboxIntent) -> str:
         query = (intent.song_query or "").strip()

@@ -56,6 +56,40 @@ Approach when we attack this:
 - **Revisit when:** the kid is old enough to be autonomous in sessions, or
   parent fatigue with pressing Enter justifies the engineering.
 
+### TD-VOX-2 — Hybrid jukebox + RPG (music while adventuring)
+Today `jukebox` and `skill` are mutually-exclusive modes: when you're in jukebox
+you can't play, when you're in adventure there's no music. The natural evolution
+is **music as a layer**, not as a separate mode:
+
+- In adventure mode, the narrator (or the rule check, or a story scene) can
+  trigger `music_client.play(mood="tension")` etc. → music plays in the
+  background while the RPG continues.
+- The kid can still say "fante para" or "fante otra" at any time, and that
+  intercepts the music layer without leaving adventure.
+- Jukebox-as-mode becomes optional — useful when the kid only wants to listen
+  with no game, redundant when music is ambient.
+
+Implementation hints when we attack this:
+1. Split `Mode` literal: `interaction_mode = "rpg"` plus a separate
+   `music_state` tracked in `GameManager` (or queried from music-hub via
+   `/status`).
+2. Add hooks in `GameManager.process_turn` (or in the narrator-side) where the
+   story can request music: e.g. an event published on `EventBus` like
+   `MusicCueRequested(mood="...")` that a `MusicCueSubscriber` translates into
+   `music_client.play(...)`.
+3. Per-rule metadata in the engine for music cues (analogous to
+   `knowledge_topic` / `challenge_category`): `music_mood: "tension"` on a rule
+   triggers tension music when that check resolves.
+4. Wake-word + music: when wake word fires while music is playing, music ducks
+   automatically so the mic captures cleanly (depends on TD-VOX-1 + an explicit
+   duck/restore endpoint in music-hub).
+
+- **Why deferred:** the kid is happy with separate jukebox-as-mode right now;
+  the architecture supports the future without changes (music-hub is already
+  an independent service). The orchestration glue is what's missing.
+- **Revisit when:** sessions show the kid wants music while playing (or when
+  TD-VOX-1 lands and ambient soundtrack becomes natural).
+
 ---
 
 ## How to add an entry
