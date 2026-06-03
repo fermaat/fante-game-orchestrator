@@ -68,5 +68,8 @@ class FanteSettings(BridgeSettings):  # type: ignore[misc]
 
     fante_narration_style: Literal["concise", "balanced", "rich"] = "concise"
 
+    fante_world_enabled: bool = False
+    fante_world_manifest_path: Path = Path("data/world_manifest.yaml")
+
 
 __all__ = ["FanteSettings"]

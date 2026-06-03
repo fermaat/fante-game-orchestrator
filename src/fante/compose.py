@@ -91,6 +91,14 @@ def build_game(
     install_logging_subscriber(bus)
     if settings.fante_monitor:
         install_dad_monitor(bus, settings.fante_monitor_path)
+    if settings.fante_world_enabled:
+        from fante.adapters.logging_world import LoggingWorldAdapter
+        from fante.events.world_view import install_world_view
+        from fante.world.director import WorldDirector
+        from fante.world.manifest import WorldManifest
+
+        manifest = WorldManifest.from_file(settings.fante_world_manifest_path)
+        install_world_view(bus, LoggingWorldAdapter(), WorldDirector(manifest))
 
     rules = _build_rules(settings)
 

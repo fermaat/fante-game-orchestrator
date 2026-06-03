@@ -11,6 +11,7 @@ from fante.ports.narrator import NarratorPort
 from fante.ports.rules import RulesPort
 from fante.ports.session import SessionStore
 from fante.ports.stores import ProfileStore
+from fante.ports.world import WorldPort
 
 __all__ = [
     "InputPort",
@@ -21,4 +22,5 @@ __all__ = [
     "ProfileStore",
     "RulesPort",
     "SessionStore",
+    "WorldPort",
 ]

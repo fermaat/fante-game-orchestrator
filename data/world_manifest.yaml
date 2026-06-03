@@ -1,0 +1,44 @@
+# World capability manifest — single source of truth for what the screen can show.
+# The narrator stays verbally unlimited; the renderer only knows these ids.
+# Game-specific data: edit freely as assets are added. See docs/world_engine_design.md.
+
+protagonist: fante
+default_background: home
+
+backgrounds:
+  - home
+  - forest
+  - cave
+  - river
+
+actors:
+  fante:
+    poses: [idle, walking, climbing, jumping, reaching, celebrating]
+    moods: [neutral, happy, sad, scared, proud]
+  elephant:
+    poses: [idle, walking]
+    moods: [neutral, happy]
+
+fx:
+  - sparkle
+  - puff
+  - stars
+
+# action rule_id (from classifier / rules engine) → protagonist pose
+action_poses:
+  climb: climbing
+  jump: jumping
+  run: walking
+  reach: reaching
+
+# CheckResult.knowledge_topic → background
+topic_backgrounds:
+  adventure: forest
+  lore: cave
+  math: home
+  languages: home
+
+# check outcome → transient effect
+outcome_fx:
+  success: sparkle
+  failure: puff
