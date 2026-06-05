@@ -28,7 +28,8 @@ src/fante/
 │   ├── io.py               # InputPort, OutputPort
 │   ├── rules.py            # RulesPort
 │   ├── session.py          # SessionStore
-│   └── stores.py           # ProfileStore
+│   ├── stores.py           # ProfileStore
+│   └── world.py            # WorldPort (Phase 4.0) — push(SceneState)
 ├── domain/                 # Game domain types
 │   ├── profile.py          # PlayerProfile (versioned), Language, seed_prompt
 │   ├── events.py           # TurnStarted, NarrationGenerated, TurnFinished
@@ -38,7 +39,11 @@ src/fante/
 │   └── commands.py         # CommandHandler — /status /roll /save /reset /quit
 ├── events/                 # Internal pub/sub
 │   ├── bus.py              # EventBus (sync, MRO-walking)
-│   └── subscribers.py      # install_logging_subscriber
+│   ├── subscribers.py      # install_logging_subscriber
+│   └── world_view.py       # install_world_view — bus events → WorldPort (Phase 4.0)
+├── world/                  # Visual layer seam (Phase 4.0)
+│   ├── manifest.py         # WorldManifest — declares showable backgrounds/actors/poses/fx
+│   └── director.py         # WorldDirector — events → SceneState (rule-based, manifest-driven)
 ├── turn/                   # Turn-level processing (Phase 2.B)
 │   └── classifier.py       # ActionClassifier — LLM call returning ActionIntent | None
 └── adapters/               # Concrete implementations of ports
@@ -56,6 +61,7 @@ src/fante/
     ├── stdio_io.py         # StdinInput, StdoutOutput
     ├── whisper_input.py    # InputPort — VAD recording + Whisper STT (Phase 3.3)
     ├── tts_output.py       # OutputPort — TTS synthesis + play via speech-io-hub (Phase 3.3)
+    ├── logging_world.py    # WorldPort — logs SceneState (stub until web client; Phase 4.0)
     └── json_profile_store.py  # v1→v2 migration aware
 
 challenge/                  # Phase 2.E
@@ -68,6 +74,7 @@ domain/
     ├── turn.py             # ActionIntent
     ├── rules.py            # RollResult, CheckResult, AppliedModifier, PlotDieFace
     ├── challenge.py        # RuleMeta, ChallengeSpec, ChallengeKind, ChallengeCategory
+    ├── scene.py            # SceneState, ActorView — visual wire contract (Phase 4.0)
     └── events.py           # + ActionClassified, CheckResolved
 
 data/
@@ -77,10 +84,11 @@ data/
 │   ├── math/raw/curriculum.md
 │   ├── languages/raw/vocab.md
 │   └── lore/raw/world_lore.md
-└── challenges/             # Minigame definitions (Phase 2.E)
-    ├── math_quick.yaml
-    ├── color_naming.yaml
-    └── verbose_attempt.yaml
+├── challenges/             # Minigame definitions (Phase 2.E)
+│   ├── math_quick.yaml
+│   ├── color_naming.yaml
+│   └── verbose_attempt.yaml
+└── world_manifest.yaml     # Capability manifest — what the screen can show (Phase 4.0)
 
 scripts/
 └── setup_copper_minds.sh   # Bootstrap: forge + ingest the four copper minds
@@ -94,7 +102,9 @@ docs/
 ├── project_briefing.md
 ├── IMPLEMENTATION_PLAN.md
 ├── USER_TESTS.md
-└── core_llm_bridge_specs.md
+├── core_llm_bridge_specs.md
+├── world_engine_design.md         # Phase 4 visual layer — orchestrator side
+└── fante-world-web-briefing.md    # Phase 4 visual layer — web client repo briefing
 
 tests/
 ├── conftest.py             # MockProvider, FakeNarrator/Input/Output/Session/Rules, make_game
@@ -124,6 +134,7 @@ tests/
 | `ProfileStore` | `JSONProfileStore` | `SqliteProfileStore` |
 | `RulesPort` | `MCPRulesAdapter` (Phase 2.A) | `LocalDice` (offline/test fallback) |
 | `SessionStore` | `JSONSessionStore` (`~/.fante/session.json`) | `SqliteSessionStore` |
+| `WorldPort` | `LoggingWorldAdapter` (Phase 4.0 stub) | `WebSocketWorldAdapter` (Phaser client, `fante-world-web`) |
 
 Planned additions (when their first consumer arrives):
 - `RulesPort` — Phase 1.5 (`LocalDice`), Phase 2 (`MCPRules` via mcp-game-rules repo)
@@ -190,6 +201,8 @@ Inherits all bridge env vars (`OLLAMA_*`, `ANTHROPIC_*`, `OPENAI_*`, `LOG_*`).
 | `FANTE_SPEECH_URL` | `http://127.0.0.1:8500` | core-speech-io-hub service base URL |
 | `FANTE_SPEECH_VOCABULARY_PATH` | `data/speech_vocabulary.yaml` | Whisper biasing vocabulary |
 | `FANTE_TTS_VOICE` | `""` | TTS voice id (empty → server default) |
+| `FANTE_WORLD_ENABLED` | `false` | Enable the visual layer seam (events → SceneState) |
+| `FANTE_WORLD_MANIFEST_PATH` | `data/world_manifest.yaml` | Capability manifest for the renderer |
 
 ## Dependencies
 
@@ -229,7 +242,9 @@ pdm run pytest -m integration -v   # opt-in, requires Ollama running
     - **3.6.2** Adaptive difficulty (tune `max_operand`, `time_limit` based on per-player success history; requires a success-stats store).
     - **3.6.3** Minigame DSL (declarative authoring in YAML for common patterns: Q&A, parametric math, multi-question, LLM-judged, choice; no Python adapter required for these kinds).
     - **3.6.4** Multi-turn challenges (cross-turn state; e.g. "say your name across three turns"). Builds on the DSL.
-- **Phase 4** — `world-engine-godot` repo → WebSocket `WorldPort`. Sibling repo.
+- **Phase 4.0 ✓** — Visual layer seam (in-repo, ahead of the client repo). `WorldPort` + `SceneState`/`ActorView` wire contract, `WorldManifest` (`data/world_manifest.yaml`) as the single source of truth for showable visuals, `WorldDirector` (rule-based events → SceneState), `install_world_view` bus bridge, `LoggingWorldAdapter` stub. `FANTE_WORLD_ENABLED` env var. Functional test + `examples/world_seam_demo.py`. **Decision: client is web 2D (Phaser), not Godot** — see `docs/world_engine_design.md`. 181 tests pass.
+- **Phase 4.1** — `fante-world-web` sibling repo (created manually): minimal Phaser client — WS connect, draw background + protagonist poses, reflect a `SceneState`.
+- **Phase 4.2** — First interactive minigame ("which letter is this?") as a visual `ChallengePort`, using the bidirectional WS back-channel for input.
 - **Future** — Multi-character / multi-session support (today the system assumes a single `player_profile.json` and one `session.json`). Telemetry-grade persistence for post-session analysis. Not on the active roadmap.
 
 ## Consumers / upstream
